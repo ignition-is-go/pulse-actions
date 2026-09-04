@@ -68,6 +68,11 @@ runs:
         components: ${{ inputs.components }}
         targets: ${{ inputs.targets }}
 
+    - name: Resolve lockfile hash
+      id: lockfile
+      shell: bash
+      run: echo "hash=${{ hashFiles('**/Cargo.lock') }}" >> "$GITHUB_OUTPUT"
+
     - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       if: inputs.cache-targets == 'true'
       id: rust-cache
@@ -99,14 +104,14 @@ runs:
         path: |
           ${{ steps.cargo-home-unix.outputs.path || steps.cargo-home-windows.outputs.path }}/registry/cache
           ${{ steps.cargo-home-unix.outputs.path || steps.cargo-home-windows.outputs.path }}/git/db
-        key: ${{ github.repository }}-${{ runner.os }}-${{ runner.arch }}-cargo-registry-${{ inputs.toolchain }}-${{ inputs.cache-shared-key }}-${{ hashFiles('**/Cargo.lock') }}-v1
+        key: ${{ github.repository }}-${{ runner.os }}-${{ runner.arch }}-cargo-registry-${{ inputs.toolchain }}-${{ inputs.cache-shared-key }}-${{ steps.lockfile.outputs.hash }}-v1
 
     - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
       if: runner.os == 'Windows' && inputs.windows-sparse-index == 'true'
       id: sparse-index-cache
       with:
         path: ${{ inputs.windows-sparse-index-path }}
-        key: ${{ inputs.windows-sparse-index-key || format('{0}-windows-sparse-index-{1}-{2}-v1', github.repository, inputs.toolchain, hashFiles('**/Cargo.lock')) }}
+        key: ${{ inputs.windows-sparse-index-key || format('{0}-windows-sparse-index-{1}-{2}-v1', github.repository, inputs.toolchain, steps.lockfile.outputs.hash) }}
 
     - uses: $/setup-sccache
       id: sccache-enabled
