@@ -1,0 +1,116 @@
+name: Rust native
+
+on:
+  workflow_call:
+    inputs:
+      package:
+        type: string
+        required: true
+      toolchain:
+        type: string
+        default: stable
+      linux-runner-json:
+        type: string
+        default: '"ubuntu-24.04"'
+      macos-runner-json:
+        type: string
+        default: '"macos-15"'
+      windows-runner-json:
+        type: string
+        default: '"windows-2025"'
+      timeout-minutes:
+        type: number
+        default: 30
+      linux-sccache:
+        description: Enable the caller-configured compiler cache on Linux.
+        type: boolean
+        default: true
+      macos-sccache:
+        description: Enable the caller-configured compiler cache on macOS.
+        type: boolean
+        default: true
+      windows-sccache:
+        description: Enable the caller-configured compiler cache on Windows.
+        type: boolean
+        default: true
+      windows-target-cache:
+        description: Cache Windows Cargo target artifacts with GitHub Actions cache.
+        type: boolean
+        default: true
+    secrets:
+      CI_CACHE_ENDPOINT:
+        required: false
+      CI_CACHE_BUCKET:
+        required: false
+      CI_CACHE_ACCESS_KEY:
+        required: false
+      CI_CACHE_SECRET_KEY:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux x64
+    uses: $/.github/workflows/_rust-native-job.yml
+    with:
+      runner-json: ${{ inputs.linux-runner-json }}
+      package: ${{ inputs.package }}
+      target: x86_64-unknown-linux-gnu
+      toolchain: ${{ inputs.toolchain }}
+      timeout-minutes: ${{ inputs.timeout-minutes }}
+      target-cache: true
+    secrets:
+      CI_CACHE_ENDPOINT: ${{ inputs.linux-sccache && secrets.CI_CACHE_ENDPOINT || '' }}
+      CI_CACHE_BUCKET: ${{ inputs.linux-sccache && secrets.CI_CACHE_BUCKET || '' }}
+      CI_CACHE_ACCESS_KEY: ${{ inputs.linux-sccache && secrets.CI_CACHE_ACCESS_KEY || '' }}
+      CI_CACHE_SECRET_KEY: ${{ inputs.linux-sccache && secrets.CI_CACHE_SECRET_KEY || '' }}
+
+  macos-x64:
+    name: macOS x64
+    uses: $/.github/workflows/_rust-native-job.yml
+    with:
+      runner-json: ${{ inputs.macos-runner-json }}
+      package: ${{ inputs.package }}
+      target: x86_64-apple-darwin
+      toolchain: ${{ inputs.toolchain }}
+      timeout-minutes: ${{ inputs.timeout-minutes }}
+      target-cache: true
+    secrets:
+      CI_CACHE_ENDPOINT: ${{ inputs.macos-sccache && secrets.CI_CACHE_ENDPOINT || '' }}
+      CI_CACHE_BUCKET: ${{ inputs.macos-sccache && secrets.CI_CACHE_BUCKET || '' }}
+      CI_CACHE_ACCESS_KEY: ${{ inputs.macos-sccache && secrets.CI_CACHE_ACCESS_KEY || '' }}
+      CI_CACHE_SECRET_KEY: ${{ inputs.macos-sccache && secrets.CI_CACHE_SECRET_KEY || '' }}
+
+  macos-arm64:
+    name: macOS arm64
+    uses: $/.github/workflows/_rust-native-job.yml
+    with:
+      runner-json: ${{ inputs.macos-runner-json }}
+      package: ${{ inputs.package }}
+      target: aarch64-apple-darwin
+      toolchain: ${{ inputs.toolchain }}
+      timeout-minutes: ${{ inputs.timeout-minutes }}
+      target-cache: true
+    secrets:
+      CI_CACHE_ENDPOINT: ${{ inputs.macos-sccache && secrets.CI_CACHE_ENDPOINT || '' }}
+      CI_CACHE_BUCKET: ${{ inputs.macos-sccache && secrets.CI_CACHE_BUCKET || '' }}
+      CI_CACHE_ACCESS_KEY: ${{ inputs.macos-sccache && secrets.CI_CACHE_ACCESS_KEY || '' }}
+      CI_CACHE_SECRET_KEY: ${{ inputs.macos-sccache && secrets.CI_CACHE_SECRET_KEY || '' }}
+
+  windows:
+    name: Windows x64
+    uses: $/.github/workflows/_rust-native-job.yml
+    with:
+      runner-json: ${{ inputs.windows-runner-json }}
+      package: ${{ inputs.package }}
+      target: x86_64-pc-windows-msvc
+      toolchain: ${{ inputs.toolchain }}
+      timeout-minutes: ${{ inputs.timeout-minutes }}
+      target-cache: ${{ inputs.windows-target-cache }}
+    secrets:
+      CI_CACHE_ENDPOINT: ${{ inputs.windows-sccache && secrets.CI_CACHE_ENDPOINT || '' }}
+      CI_CACHE_BUCKET: ${{ inputs.windows-sccache && secrets.CI_CACHE_BUCKET || '' }}
+      CI_CACHE_ACCESS_KEY: ${{ inputs.windows-sccache && secrets.CI_CACHE_ACCESS_KEY || '' }}
+      CI_CACHE_SECRET_KEY: ${{ inputs.windows-sccache && secrets.CI_CACHE_SECRET_KEY || '' }}

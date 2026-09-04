@@ -1,0 +1,93 @@
+name: Set up Rust
+description: Install Rust and restore the platform Cargo caches.
+
+inputs:
+  toolchain:
+    description: Rust toolchain channel or version.
+    default: stable
+  components:
+    description: Comma-separated Rust components.
+    default: ""
+  targets:
+    description: Comma-separated Rust targets.
+    default: ""
+  cache-workspaces:
+    description: Newline-separated Cargo workspace paths.
+    default: .
+  cache-shared-key:
+    description: Extra cache-key material controlled by the caller.
+    default: v1
+  cache-targets:
+    description: Cache Cargo target directories with the GitHub cache service.
+    default: "true"
+  add-rust-environment-hash-key:
+    description: Include the Rust compiler environment in the cache key.
+    default: "true"
+  windows-sparse-index:
+    description: Preserve the sparse registry index on Windows.
+    default: "false"
+  windows-sparse-index-path:
+    description: Cargo sparse-index path on Windows.
+    default: C:\Rust\cargo\registry\index
+  windows-sparse-index-key:
+    description: Sparse-index cache key. The default includes the caller and lockfile.
+    default: ""
+  sccache-access-key:
+    description: Bucket-scoped MinIO access key. Leave empty for untrusted fork jobs.
+    default: ""
+  sccache-endpoint:
+    description: S3-compatible compiler-cache endpoint URL.
+    default: ""
+  sccache-bucket:
+    description: S3-compatible compiler-cache bucket.
+    default: ""
+  sccache-secret-key:
+    description: Bucket-scoped MinIO secret key. Leave empty for untrusted fork jobs.
+    default: ""
+
+outputs:
+  rust-cache-hit:
+    description: Whether the Rust cache matched its primary key.
+    value: ${{ steps.rust-cache.outputs.cache-hit }}
+  sparse-index-cache-hit:
+    description: Whether the Windows sparse-index cache matched its primary key.
+    value: ${{ steps.sparse-index-cache.outputs.cache-hit }}
+  offline:
+    description: Whether every enabled Cargo cache matched its primary key.
+    value: ${{ steps.rust-cache.outputs.cache-hit == 'true' && (inputs.windows-sparse-index != 'true' || steps.sparse-index-cache.outputs.cache-hit == 'true') }}
+  compiler-cache-enabled:
+    description: Whether the remote compiler-output cache was configured.
+    value: ${{ steps.sccache-enabled.outputs.enabled }}
+
+runs:
+  using: composite
+  steps:
+    - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+      with:
+        toolchain: ${{ inputs.toolchain }}
+        components: ${{ inputs.components }}
+        targets: ${{ inputs.targets }}
+
+    - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      id: rust-cache
+      with:
+        workspaces: ${{ inputs.cache-workspaces }}
+        shared-key: ${{ inputs.cache-shared-key }}
+        add-rust-environment-hash-key: ${{ inputs.add-rust-environment-hash-key }}
+        cache-targets: ${{ inputs.cache-targets }}
+        cache-bin: false
+
+    - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+      if: runner.os == 'Windows' && inputs.windows-sparse-index == 'true'
+      id: sparse-index-cache
+      with:
+        path: ${{ inputs.windows-sparse-index-path }}
+        key: ${{ inputs.windows-sparse-index-key || format('{0}-windows-sparse-index-{1}-{2}-v1', github.repository, inputs.toolchain, hashFiles('**/Cargo.lock')) }}
+
+    - uses: $/setup-sccache
+      id: sccache-enabled
+      with:
+        endpoint: ${{ inputs.sccache-endpoint }}
+        bucket: ${{ inputs.sccache-bucket }}
+        access-key: ${{ inputs.sccache-access-key }}
+        secret-key: ${{ inputs.sccache-secret-key }}

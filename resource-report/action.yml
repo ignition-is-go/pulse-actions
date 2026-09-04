@@ -1,0 +1,54 @@
+name: Report runner resources
+description: Write CPU, memory, and storage details to the job summary.
+
+runs:
+  using: composite
+  steps:
+    - name: Report Unix resources
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        {
+          echo '## Runner resources'
+          echo
+          echo '```text'
+          echo "runner=$RUNNER_NAME os=$RUNNER_OS arch=$RUNNER_ARCH"
+          getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.logicalcpu
+          if command -v free >/dev/null 2>&1; then free -h; else vm_stat; fi
+          df -h .
+          if command -v sccache >/dev/null 2>&1; then
+            echo
+            sccache --show-stats || true
+          fi
+          echo '```'
+        } | tee -a "$GITHUB_STEP_SUMMARY"
+
+    - name: Report Windows resources
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        Add-Type -AssemblyName Microsoft.VisualBasic
+        $computer = New-Object Microsoft.VisualBasic.Devices.ComputerInfo
+        $report = @(
+          '## Runner resources'
+          ''
+          '```text'
+          "runner=$env:RUNNER_NAME os=$env:RUNNER_OS arch=$env:RUNNER_ARCH"
+          "logical_processors=$([Environment]::ProcessorCount)"
+          "total_physical_memory=$($computer.TotalPhysicalMemory)"
+          (Get-PSDrive -PSProvider FileSystem | Select-Object Name, Used, Free | Format-Table -AutoSize | Out-String).Trim()
+          if (Get-Command sccache -ErrorAction SilentlyContinue) {
+            ''
+            $stats = Start-Job { sccache --show-stats | Out-String }
+            if (Wait-Job $stats -Timeout 10) {
+              (Receive-Job $stats | Out-String).Trim()
+            } else {
+              Stop-Job $stats
+              'sccache statistics unavailable after 10 seconds'
+            }
+            Remove-Job $stats -Force
+          }
+          '```'
+        )
+        $report | Write-Output
+        $report | Add-Content $env:GITHUB_STEP_SUMMARY

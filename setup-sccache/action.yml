@@ -1,0 +1,140 @@
+name: Set up sccache
+description: Install pinned sccache and connect jobs to an S3-compatible compiler cache.
+
+inputs:
+  endpoint:
+    description: S3-compatible cache endpoint URL.
+    default: ""
+  bucket:
+    description: S3-compatible cache bucket.
+    default: ""
+  access-key:
+    description: Bucket-scoped MinIO access key.
+    default: ""
+  secret-key:
+    description: Bucket-scoped MinIO secret key.
+    default: ""
+
+outputs:
+  enabled:
+    description: Whether remote compiler caching was enabled.
+    value: ${{ steps.mode.outputs.enabled }}
+
+runs:
+  using: composite
+  steps:
+    - name: Select compiler cache mode
+      id: mode
+      shell: bash
+      env:
+        ENDPOINT: ${{ inputs.endpoint }}
+        BUCKET: ${{ inputs.bucket }}
+        ACCESS_KEY: ${{ inputs.access-key }}
+        SECRET_KEY: ${{ inputs.secret-key }}
+      run: |
+        if [[ -n "$ENDPOINT" && -n "$BUCKET" && -n "$ACCESS_KEY" && -n "$SECRET_KEY" ]]; then
+          echo 'enabled=true' >> "$GITHUB_OUTPUT"
+        elif [[ -z "$ENDPOINT" && -z "$BUCKET" && -z "$ACCESS_KEY" && -z "$SECRET_KEY" ]]; then
+          echo 'enabled=false' >> "$GITHUB_OUTPUT"
+          echo 'Remote compiler cache disabled: this job has no cache credentials.'
+        else
+          echo 'Endpoint, bucket, and both credentials must be provided together.' >&2
+          exit 1
+        fi
+
+    - name: Install sccache on Unix
+      if: steps.mode.outputs.enabled == 'true' && runner.os != 'Windows'
+      shell: bash
+      env:
+        SCCACHE_VERSION: 0.17.0
+        SCCACHE_LINUX_X64_SHA256: 67c4a96dd237c1f518f6b36083f270f9976d516f1e57fce891755ea782e50006
+        SCCACHE_MACOS_ARM64_SHA256: 0c560bfba31aef5bdfb4fb3d2677f6e61d71c5c00952f2a83344f47aa31f00f1
+        SCCACHE_MACOS_X64_SHA256: c2144cafbfe3d22e34ae637f9974ce53613543ac19477fdb287df22ea3668261
+      run: |
+        case "$RUNNER_OS/$RUNNER_ARCH" in
+          Linux/X64)
+            asset="sccache-v${SCCACHE_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+            checksum="$SCCACHE_LINUX_X64_SHA256"
+            ;;
+          macOS/ARM64)
+            asset="sccache-v${SCCACHE_VERSION}-aarch64-apple-darwin.tar.gz"
+            checksum="$SCCACHE_MACOS_ARM64_SHA256"
+            ;;
+          macOS/X64)
+            asset="sccache-v${SCCACHE_VERSION}-x86_64-apple-darwin.tar.gz"
+            checksum="$SCCACHE_MACOS_X64_SHA256"
+            ;;
+          *)
+            echo "Unsupported sccache runner: $RUNNER_OS/$RUNNER_ARCH" >&2
+            exit 1
+            ;;
+        esac
+        curl --fail --location --retry 3 --output "$RUNNER_TEMP/$asset" \
+          "https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERSION}/$asset"
+        if [[ "$RUNNER_OS" == Linux ]]; then
+          echo "$checksum  $RUNNER_TEMP/$asset" | sha256sum --check
+        else
+          echo "$checksum  $RUNNER_TEMP/$asset" | shasum -a 256 --check
+        fi
+        tar -xzf "$RUNNER_TEMP/$asset" -C "$RUNNER_TEMP"
+        sudo install -m 0755 "$RUNNER_TEMP/${asset%.tar.gz}/sccache" /usr/local/bin/sccache
+
+    - name: Install sccache on Windows
+      if: steps.mode.outputs.enabled == 'true' && runner.os == 'Windows'
+      shell: powershell
+      env:
+        SCCACHE_VERSION: 0.17.0
+        SCCACHE_SHA256: e94cfc5b58cbe439302f586c1d1bd7980c2cd371d47bdf385ade657411e6f3ac
+      run: |
+        if (Get-Command sccache.exe -ErrorAction SilentlyContinue) {
+          Write-Host "Using preinstalled $(& sccache.exe --version)"
+          exit 0
+        }
+        $asset = "sccache-v$env:SCCACHE_VERSION-x86_64-pc-windows-msvc.zip"
+        $archive = Join-Path $env:RUNNER_TEMP $asset
+        Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/mozilla/sccache/releases/download/v$env:SCCACHE_VERSION/$asset" -OutFile $archive
+        $actual = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+        if ($actual -ne $env:SCCACHE_SHA256) { throw "sccache checksum mismatch: $actual" }
+        Expand-Archive -LiteralPath $archive -DestinationPath $env:RUNNER_TEMP -Force
+        $directory = Join-Path $env:RUNNER_TEMP ($asset -replace '\.zip$', '')
+        if (-not $env:CARGO_HOME) { throw 'CARGO_HOME must be set on the Windows runner' }
+        $cargoBin = Join-Path $env:CARGO_HOME 'bin'
+        New-Item -ItemType Directory -Path $cargoBin -Force | Out-Null
+        Copy-Item (Join-Path $directory 'sccache.exe') (Join-Path $cargoBin 'sccache.exe') -Force
+
+    - name: Configure remote compiler cache
+      if: steps.mode.outputs.enabled == 'true'
+      shell: bash
+      env:
+        ENDPOINT: ${{ inputs.endpoint }}
+        BUCKET: ${{ inputs.bucket }}
+        ACCESS_KEY: ${{ inputs.access-key }}
+        SECRET_KEY: ${{ inputs.secret-key }}
+      run: |
+        {
+          echo 'RUSTC_WRAPPER=sccache'
+          echo "SCCACHE_BUCKET=$BUCKET"
+          echo "SCCACHE_ENDPOINT=$ENDPOINT"
+          echo 'SCCACHE_REGION=auto'
+          echo 'SCCACHE_S3_USE_SSL=false'
+          echo 'SCCACHE_S3_KEY_PREFIX=rust/v1'
+          echo "SCCACHE_BASEDIRS=$GITHUB_WORKSPACE"
+          echo "AWS_ACCESS_KEY_ID=$ACCESS_KEY"
+          echo "AWS_SECRET_ACCESS_KEY=$SECRET_KEY"
+        } >> "$GITHUB_ENV"
+
+    - name: Start compiler cache and reset job statistics
+      if: steps.mode.outputs.enabled == 'true'
+      shell: bash
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.access-key }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.secret-key }}
+        SCCACHE_BUCKET: ${{ inputs.bucket }}
+        SCCACHE_ENDPOINT: ${{ inputs.endpoint }}
+        SCCACHE_REGION: auto
+        SCCACHE_S3_USE_SSL: "false"
+        SCCACHE_S3_KEY_PREFIX: rust/v1
+        SCCACHE_BASEDIRS: ${{ github.workspace }}
+      run: |
+        sccache --start-server
+        sccache --zero-stats

@@ -1,0 +1,57 @@
+name: Rust check
+
+on:
+  workflow_call:
+    inputs:
+      toolchain:
+        type: string
+        default: stable
+      runner-json:
+        type: string
+        default: '"ubuntu-24.04"'
+      timeout-minutes:
+        type: number
+        default: 30
+    secrets:
+      CI_CACHE_ENDPOINT:
+        required: false
+      CI_CACHE_BUCKET:
+        required: false
+      CI_CACHE_ACCESS_KEY:
+        required: false
+      CI_CACHE_SECRET_KEY:
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Rust check
+    runs-on: ${{ fromJSON(inputs.runner-json) }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: $/resource-report
+      - uses: $/setup-rust
+        with:
+          toolchain: ${{ inputs.toolchain }}
+          components: rustfmt,clippy
+          cache-shared-key: rust-check-v1
+          sccache-endpoint: ${{ secrets.CI_CACHE_ENDPOINT }}
+          sccache-bucket: ${{ secrets.CI_CACHE_BUCKET }}
+          sccache-access-key: ${{ secrets.CI_CACHE_ACCESS_KEY }}
+          sccache-secret-key: ${{ secrets.CI_CACHE_SECRET_KEY }}
+      - name: Format
+        run: cargo fmt -- --check
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Test
+        run: cargo test
+      - uses: $/resource-report
+        if: always()

@@ -1,0 +1,82 @@
+name: Cargo Flux check
+
+on:
+  workflow_call:
+    inputs:
+      toolchain:
+        type: string
+        default: stable
+      cargo-flux-version:
+        type: string
+        required: true
+      tasks:
+        description: Space-separated Cargo Flux task names.
+        type: string
+        default: check lint test
+      targets:
+        type: string
+        default: ""
+      runner-json:
+        type: string
+        default: '"ubuntu-24.04"'
+      timeout-minutes:
+        type: number
+        default: 45
+    secrets:
+      CI_CACHE_ENDPOINT:
+        required: false
+      CI_CACHE_BUCKET:
+        required: false
+      CI_CACHE_ACCESS_KEY:
+        required: false
+      CI_CACHE_SECRET_KEY:
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Cargo Flux check
+    runs-on: ${{ fromJSON(inputs.runner-json) }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+      - uses: $/resource-report
+      - name: Install Linux build dependencies
+        run: |
+          if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
+            sudo sed -i 's|http://|https://|g' /etc/apt/sources.list.d/ubuntu.sources
+          fi
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libssl-dev
+      - uses: $/setup-rust
+        with:
+          toolchain: ${{ inputs.toolchain }}
+          components: clippy
+          targets: ${{ inputs.targets }}
+          cache-shared-key: cargo-flux-check-v1
+          sccache-endpoint: ${{ secrets.CI_CACHE_ENDPOINT }}
+          sccache-bucket: ${{ secrets.CI_CACHE_BUCKET }}
+          sccache-access-key: ${{ secrets.CI_CACHE_ACCESS_KEY }}
+          sccache-secret-key: ${{ secrets.CI_CACHE_SECRET_KEY }}
+      - name: Install Cargo Flux
+        env:
+          CARGO_FLUX_VERSION: ${{ inputs.cargo-flux-version }}
+        run: cargo install cargo-flux --version "$CARGO_FLUX_VERSION" --locked
+      - name: Run Cargo Flux tasks
+        env:
+          FLUX_TASKS: ${{ inputs.tasks }}
+        run: |
+          for task in $FLUX_TASKS; do
+            cargo flux run "$task"
+          done
+      - uses: $/resource-report
+        if: always()
