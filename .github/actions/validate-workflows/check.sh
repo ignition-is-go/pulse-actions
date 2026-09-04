@@ -30,11 +30,13 @@ printf '%s  %s\n' "${shellcheck_sha256}" "${install_dir}/shellcheck.tar.gz" | sh
 tar -xzf "${install_dir}/shellcheck.tar.gz" -C "${install_dir}" \
   --strip-components=1 "shellcheck-v${shellcheck_version}/shellcheck"
 
+actionlint_args=(
+  -ignore 'specifying action "\$/.*" in invalid format'
+  -ignore 'reusable workflow call "\$/.*" at "uses" is not following'
+)
 if [[ -f "${GITHUB_WORKSPACE}/.github/actionlint.yaml" ]]; then
-  PATH="${install_dir}:${PATH}" actionlint \
-    -config-file "${GITHUB_WORKSPACE}/.github/actionlint.yaml"
-else
-  PATH="${install_dir}:${PATH}" actionlint
+  actionlint_args+=(-config-file "${GITHUB_WORKSPACE}/.github/actionlint.yaml")
 fi
+PATH="${install_dir}:${PATH}" actionlint "${actionlint_args[@]}"
 
 "${GITHUB_ACTION_PATH}/check-action-pins.sh"

@@ -46,3 +46,4 @@ jobs:
           persist-credentials: false
       - run: ./scripts/check-public-contract.sh
       - run: ./scripts/test-action-pin-check.sh
+      - run: ./scripts/test-workflow-validation.sh

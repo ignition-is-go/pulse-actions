@@ -1,6 +1,6 @@
 # Public contract
 
-The authoritative entry-point list is [`contract/public-api.txt`](../contract/public-api.txt). Its checksum snapshot records every path, input, output, and default. CI fails if the exported contract changes without an explicit snapshot update.
+The authoritative entry-point list is [`contract/public-api.txt`](../contract/public-api.txt). Its checksum snapshot records every path, input, output, default, and transitive implementation file. CI fails if the exported contract changes without an explicit snapshot update.
 
 ## Compatibility
 

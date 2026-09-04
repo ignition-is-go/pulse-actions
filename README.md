@@ -51,4 +51,4 @@ steps:
 
 All four compiler-cache values must be provided together. If they are absent, including on fork pull requests, the build runs without remote compiler caching. The endpoint scheme selects encrypted (`https`) or unencrypted (`http`) transport.
 
-See [the public contract](docs/contract.md), [design](docs/design.md), and [release policy](docs/releases.md).
+See [the public contract](docs/contract.md), [v1 migration guide](docs/migrating-to-v1.md), [design](docs/design.md), and [release policy](docs/releases.md).

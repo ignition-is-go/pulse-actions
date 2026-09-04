@@ -6,3 +6,4 @@
 - Require callers to choose runner labels.
 - Keep cache configuration optional and validate it as one unit.
 - Enforce immutable third-party action references and a leak-free public surface.
+- Replace the pre-v1 paths and input names documented in the migration guide.
