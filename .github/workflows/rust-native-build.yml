@@ -33,6 +33,18 @@ on:
       windows-target-cache:
         type: boolean
         default: true
+      compiler-cache-auth:
+        description: Compiler-cache authentication mode (static, ambient, or anonymous).
+        type: string
+        default: static
+      compiler-cache-endpoint:
+        description: Non-secret S3-compatible endpoint. Takes precedence over CI_CACHE_ENDPOINT.
+        type: string
+        default: ""
+      compiler-cache-bucket:
+        description: Non-secret S3-compatible bucket. Takes precedence over CI_CACHE_BUCKET.
+        type: string
+        default: ""
     secrets:
       CI_CACHE_ENDPOINT:
         required: false
@@ -41,6 +53,8 @@ on:
       CI_CACHE_ACCESS_KEY:
         required: false
       CI_CACHE_SECRET_KEY:
+        required: false
+      CI_CACHE_SESSION_TOKEN:
         required: false
 
 permissions:
@@ -61,21 +75,25 @@ jobs:
             target: x86_64-unknown-linux-gnu
             compiler-cache: ${{ inputs.linux-compiler-cache }}
             target-cache: true
+            disabled-compiler-cache-auth: static
           - name: macOS x64
             runner-json: ${{ inputs.macos-runner-json }}
             target: x86_64-apple-darwin
             compiler-cache: ${{ inputs.macos-compiler-cache }}
             target-cache: true
+            disabled-compiler-cache-auth: static
           - name: macOS arm64
             runner-json: ${{ inputs.macos-runner-json }}
             target: aarch64-apple-darwin
             compiler-cache: ${{ inputs.macos-compiler-cache }}
             target-cache: true
+            disabled-compiler-cache-auth: static
           - name: Windows x64
             runner-json: ${{ inputs.windows-runner-json }}
             target: x86_64-pc-windows-msvc
             compiler-cache: ${{ inputs.windows-compiler-cache }}
             target-cache: ${{ inputs.windows-target-cache }}
+            disabled-compiler-cache-auth: static
     runs-on: ${{ fromJSON(matrix.runner-json) }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     steps:
@@ -93,10 +111,12 @@ jobs:
           cache-targets: ${{ matrix.target-cache }}
           linux-dependencies: openssl
           windows-sparse-index: ${{ runner.os == 'Windows' }}
-          compiler-cache-endpoint: ${{ matrix.compiler-cache && secrets.CI_CACHE_ENDPOINT || '' }}
-          compiler-cache-bucket: ${{ matrix.compiler-cache && secrets.CI_CACHE_BUCKET || '' }}
+          compiler-cache-auth: ${{ matrix.compiler-cache == false && matrix.disabled-compiler-cache-auth || inputs.compiler-cache-auth }}
+          compiler-cache-endpoint: ${{ matrix.compiler-cache && (inputs.compiler-cache-endpoint || secrets.CI_CACHE_ENDPOINT) || '' }}
+          compiler-cache-bucket: ${{ matrix.compiler-cache && (inputs.compiler-cache-bucket || secrets.CI_CACHE_BUCKET) || '' }}
           compiler-cache-access-key: ${{ matrix.compiler-cache && secrets.CI_CACHE_ACCESS_KEY || '' }}
           compiler-cache-secret-key: ${{ matrix.compiler-cache && secrets.CI_CACHE_SECRET_KEY || '' }}
+          compiler-cache-session-token: ${{ matrix.compiler-cache && secrets.CI_CACHE_SESSION_TOKEN || '' }}
       - name: Build on Linux or macOS
         if: runner.os != 'Windows'
         env:

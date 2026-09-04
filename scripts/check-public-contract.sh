@@ -3,6 +3,8 @@ set -euo pipefail
 
 readonly expected=contract/public-api.txt
 readonly actual_file="${RUNNER_TEMP:-/tmp}/pulse-actions-public-api.txt"
+readonly manifest_file="${RUNNER_TEMP:-/tmp}/pulse-actions-contract-manifest.txt"
+readonly required_file="${RUNNER_TEMP:-/tmp}/pulse-actions-required-contract-files.txt"
 readonly estate_label='ci-[[:alnum:]_-]+-(ephemeral|persistent)|site-[[:alnum:]_-]+|cpu-ge-[0-9]+|ram-ge-[0-9]+|disk-ge-[0-9]+'
 
 {
@@ -16,6 +18,16 @@ readonly estate_label='ci-[[:alnum:]_-]+-(ephemeral|persistent)|site-[[:alnum:]_
 
 if ! diff -u <(sort "$expected") "$actual_file"; then
   echo 'Public entry points differ from contract/public-api.txt.' >&2
+  exit 1
+fi
+
+{
+  cat "$actual_file"
+  git ls-files --cached --others --exclude-standard '.github/actions/**'
+} | sort -u > "$required_file"
+awk '{print $2}' contract/public-api.sha256 | sort -u > "$manifest_file"
+if ! diff -u "$required_file" "$manifest_file"; then
+  echo 'The checksum manifest must contain every public entry point and internal action file.' >&2
   exit 1
 fi
 
@@ -40,3 +52,5 @@ if "$resolver" ftp://cache.example.invalid >/dev/null 2>&1; then
   echo 'The compiler-cache endpoint validator accepted an unsupported scheme.' >&2
   exit 1
 fi
+
+bash scripts/test-compiler-cache-auth.sh

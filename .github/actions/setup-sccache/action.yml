@@ -2,6 +2,9 @@ name: Set up sccache
 description: Install pinned sccache and connect jobs to an S3-compatible compiler cache.
 
 inputs:
+  auth:
+    description: Authentication mode (static, ambient, or anonymous).
+    default: static
   endpoint:
     description: S3-compatible cache endpoint URL.
     default: ""
@@ -9,10 +12,13 @@ inputs:
     description: S3-compatible cache bucket.
     default: ""
   access-key:
-    description: Bucket-scoped MinIO access key.
+    description: Bucket-scoped S3-compatible access key.
     default: ""
   secret-key:
-    description: Bucket-scoped MinIO secret key.
+    description: Bucket-scoped S3-compatible secret key.
+    default: ""
+  session-token:
+    description: Optional S3-compatible session token.
     default: ""
 
 outputs:
@@ -27,19 +33,33 @@ runs:
       id: mode
       shell: bash
       env:
+        AUTH: ${{ inputs.auth }}
         ENDPOINT: ${{ inputs.endpoint }}
         BUCKET: ${{ inputs.bucket }}
         ACCESS_KEY: ${{ inputs.access-key }}
         SECRET_KEY: ${{ inputs.secret-key }}
+        SESSION_TOKEN: ${{ inputs.session-token }}
       run: |
-        if [[ -n "$ENDPOINT" && -n "$BUCKET" && -n "$ACCESS_KEY" && -n "$SECRET_KEY" ]]; then
-          echo 'enabled=true' >> "$GITHUB_OUTPUT"
-        elif [[ -z "$ENDPOINT" && -z "$BUCKET" && -z "$ACCESS_KEY" && -z "$SECRET_KEY" ]]; then
-          echo 'enabled=false' >> "$GITHUB_OUTPUT"
+        bash "$GITHUB_ACTION_PATH/validate-single-line-env.sh" \
+          AUTH ENDPOINT BUCKET ACCESS_KEY SECRET_KEY SESSION_TOKEN GITHUB_WORKSPACE
+
+        present() {
+          if [[ -n "$1" ]]; then printf 'true\n'; else printf 'false\n'; fi
+        }
+
+        resolved=$(bash "$GITHUB_ACTION_PATH/resolve-auth.sh" \
+          "$AUTH" \
+          "$(present "$ENDPOINT")" \
+          "$(present "$BUCKET")" \
+          "$(present "$ACCESS_KEY")" \
+          "$(present "$SECRET_KEY")" \
+          "$(present "$SESSION_TOKEN")" \
+          "$(present "${AWS_ACCESS_KEY_ID:-}")" \
+          "$(present "${AWS_SECRET_ACCESS_KEY:-}")")
+        printf '%s\n' "$resolved" >> "$GITHUB_OUTPUT"
+
+        if [[ "$resolved" == $'enabled=false\nauth=disabled' ]]; then
           echo 'Remote compiler cache disabled: this job has no cache credentials.'
-        else
-          echo 'Endpoint, bucket, and both credentials must be provided together.' >&2
-          exit 1
         fi
 
     - name: Install sccache on Unix
@@ -111,30 +131,20 @@ runs:
       if: steps.mode.outputs.enabled == 'true'
       shell: bash
       env:
+        AUTH: ${{ steps.mode.outputs.auth }}
         ENDPOINT: ${{ inputs.endpoint }}
         BUCKET: ${{ inputs.bucket }}
         ACCESS_KEY: ${{ inputs.access-key }}
         SECRET_KEY: ${{ inputs.secret-key }}
+        SESSION_TOKEN: ${{ inputs.session-token }}
       run: |
         use_ssl=$("$GITHUB_ACTION_PATH/resolve-endpoint.sh" "$ENDPOINT")
-        {
-          echo 'RUSTC_WRAPPER=sccache'
-          echo "SCCACHE_BUCKET=$BUCKET"
-          echo "SCCACHE_ENDPOINT=$ENDPOINT"
-          echo 'SCCACHE_REGION=auto'
-          echo "SCCACHE_S3_USE_SSL=$use_ssl"
-          echo 'SCCACHE_S3_KEY_PREFIX=rust/v1'
-          echo "SCCACHE_BASEDIRS=$GITHUB_WORKSPACE"
-          echo "AWS_ACCESS_KEY_ID=$ACCESS_KEY"
-          echo "AWS_SECRET_ACCESS_KEY=$SECRET_KEY"
-        } >> "$GITHUB_ENV"
+        USE_SSL=$use_ssl bash "$GITHUB_ACTION_PATH/render-env.sh" "$AUTH" >> "$GITHUB_ENV"
 
     - name: Start compiler cache and reset job statistics
       if: steps.mode.outputs.enabled == 'true'
       shell: bash
       env:
-        AWS_ACCESS_KEY_ID: ${{ inputs.access-key }}
-        AWS_SECRET_ACCESS_KEY: ${{ inputs.secret-key }}
         SCCACHE_BUCKET: ${{ inputs.bucket }}
         SCCACHE_ENDPOINT: ${{ inputs.endpoint }}
         SCCACHE_REGION: auto
