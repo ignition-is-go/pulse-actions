@@ -13,6 +13,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  public-surface:
+    name: public surface
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Reject private infrastructure references
+        run: ./scripts/check-public-surface.sh
+      - name: Scan reachable history for secrets
+        uses: docker://zricethezav/gitleaks:v8.28.0
+        with:
+          args: detect --source=/github/workspace --no-banner --redact --log-opts=--all
+
   actionlint:
     name: actionlint
     runs-on: ubuntu-24.04
