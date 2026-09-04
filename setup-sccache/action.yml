@@ -87,7 +87,12 @@ runs:
         SCCACHE_SHA256: e94cfc5b58cbe439302f586c1d1bd7980c2cd371d47bdf385ade657411e6f3ac
       run: |
         if (Get-Command sccache.exe -ErrorAction SilentlyContinue) {
-          Write-Host "Using preinstalled $(& sccache.exe --version)"
+          $actualVersion = (& sccache.exe --version).Trim()
+          $expectedVersion = "sccache $env:SCCACHE_VERSION"
+          if ($actualVersion -ne $expectedVersion) {
+            throw "Preinstalled sccache version mismatch: expected '$expectedVersion', found '$actualVersion'"
+          }
+          Write-Host "Using preinstalled $actualVersion"
           exit 0
         }
         $asset = "sccache-v$env:SCCACHE_VERSION-x86_64-pc-windows-msvc.zip"
