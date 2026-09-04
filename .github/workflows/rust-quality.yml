@@ -1,4 +1,4 @@
-name: Rust check
+name: Rust quality
 
 on:
   workflow_call:
@@ -8,7 +8,7 @@ on:
         default: stable
       runner-json:
         type: string
-        default: '"ubuntu-24.04"'
+        required: true
       timeout-minutes:
         type: number
         default: 30
@@ -37,21 +37,21 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
-      - uses: $/resource-report
-      - uses: $/setup-rust
+      - uses: $/actions/report-resources
+      - uses: $/actions/setup-rust
         with:
           toolchain: ${{ inputs.toolchain }}
           components: rustfmt,clippy
-          cache-shared-key: rust-check-v1
-          sccache-endpoint: ${{ secrets.CI_CACHE_ENDPOINT }}
-          sccache-bucket: ${{ secrets.CI_CACHE_BUCKET }}
-          sccache-access-key: ${{ secrets.CI_CACHE_ACCESS_KEY }}
-          sccache-secret-key: ${{ secrets.CI_CACHE_SECRET_KEY }}
+          cache-shared-key: rust-quality-v1
+          compiler-cache-endpoint: ${{ secrets.CI_CACHE_ENDPOINT }}
+          compiler-cache-bucket: ${{ secrets.CI_CACHE_BUCKET }}
+          compiler-cache-access-key: ${{ secrets.CI_CACHE_ACCESS_KEY }}
+          compiler-cache-secret-key: ${{ secrets.CI_CACHE_SECRET_KEY }}
       - name: Format
         run: cargo fmt -- --check
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
       - name: Test
         run: cargo test
-      - uses: $/resource-report
+      - uses: $/actions/report-resources
         if: always()

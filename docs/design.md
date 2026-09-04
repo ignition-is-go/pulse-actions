@@ -1,23 +1,9 @@
-# Reusable Rust CI
+# Design
 
-`pulse-actions` owns deterministic, unprivileged CI setup and common job shapes. Calling repositories own triggers, concurrency, runner selection, release policy, credentials, and commands that are specific to one product.
+`pulse-actions` owns deterministic, unprivileged Rust CI setup and common job shapes. Calling repositories own scheduling and policy.
 
-## Public contracts
+The public layer contains complete actions and reusable workflows. Private implementation actions live under `.github/actions` and may change without notice. Reusable workflows accept runner JSON instead of naming infrastructure. They do not accept executable command strings.
 
-`rust-check.yml` runs the standard Cargo format, Clippy, and test commands. `cargo-flux-check.yml` runs named tasks through a pinned Cargo Flux installation. `rust-native.yml` builds one package for the native Linux, macOS, and Windows targets.
+`actions/setup-rust` validates its dependency profile and compiler-cache configuration at the input boundary. Linux dependencies are closed profiles rather than arbitrary package strings. Compiler caching is enabled only when the endpoint, bucket, access key, and secret key are all present. The endpoint scheme controls TLS.
 
-`setup-rust` is the lower-level contract for a caller that needs custom steps. It owns the toolchain action, Rust cache, and optional Windows sparse-index cache. The action reports whether Cargo can run offline after exact cache hits.
-
-`rust-job-setup` is the normal contract for a custom Rust job. It owns secure checkout, initial resource reporting, approved Linux dependency profiles, toolchain setup, and caching. The caller keeps its exact Cargo commands and emits the final resource report after them. This avoids encoding Cargo's command line as another configuration language.
-
-Reusable workflows accept runner JSON because the calling repository owns scheduling. They do not accept executable command strings. Dependency profiles are reviewed allow-lists rather than arbitrary package names.
-
-## Security boundary
-
-Every workflow grants only `contents: read`. Rust workflows accept optional, bucket-scoped compiler-cache secrets and run without remote caching when all four values are absent. They do not use `pull_request_target`, tag, publish, sign, deploy, or call another repository.
-
-The repository is public because both public and private repositories call it. Workflow validation rejects mutable third-party action references. Callers pin a full `pulse-actions` commit SHA.
-
-## Versioning
-
-An additive input with the same default is backward-compatible. Removing an input, changing a default, changing a runner mapping, or changing cache semantics is breaking. The repository currently publishes no version tags, so commit SHAs are the only supported version identifiers.
+Every workflow grants only `contents: read`. The repository contains no runner identities, network addresses, bucket names, or credentials. It does not use `pull_request_target`, publish, sign, deploy, or perform privileged release work. Calling repositories pin a full commit SHA and explicitly map each optional cache secret.

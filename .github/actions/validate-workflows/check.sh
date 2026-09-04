@@ -30,7 +30,11 @@ printf '%s  %s\n' "${shellcheck_sha256}" "${install_dir}/shellcheck.tar.gz" | sh
 tar -xzf "${install_dir}/shellcheck.tar.gz" -C "${install_dir}" \
   --strip-components=1 "shellcheck-v${shellcheck_version}/shellcheck"
 
-PATH="${install_dir}:${PATH}" actionlint \
-  -config-file "${GITHUB_ACTION_PATH}/actionlint.yaml"
+if [[ -f "${GITHUB_WORKSPACE}/.github/actionlint.yaml" ]]; then
+  PATH="${install_dir}:${PATH}" actionlint \
+    -config-file "${GITHUB_WORKSPACE}/.github/actionlint.yaml"
+else
+  PATH="${install_dir}:${PATH}" actionlint
+fi
 
 "${GITHUB_ACTION_PATH}/check-action-pins.sh"

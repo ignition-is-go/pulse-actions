@@ -32,17 +32,20 @@ inputs:
   windows-sparse-index-key:
     description: Sparse-index cache key. The default includes the caller and lockfile.
     default: ""
-  sccache-access-key:
-    description: Bucket-scoped MinIO access key. Leave empty for untrusted fork jobs.
+  linux-dependencies:
+    description: Approved Linux dependency profile (none, build, or openssl).
+    default: none
+  compiler-cache-access-key:
+    description: Bucket-scoped S3-compatible access key. Leave empty to disable remote compiler caching.
     default: ""
-  sccache-endpoint:
+  compiler-cache-endpoint:
     description: S3-compatible compiler-cache endpoint URL.
     default: ""
-  sccache-bucket:
+  compiler-cache-bucket:
     description: S3-compatible compiler-cache bucket.
     default: ""
-  sccache-secret-key:
-    description: Bucket-scoped MinIO secret key. Leave empty for untrusted fork jobs.
+  compiler-cache-secret-key:
+    description: Bucket-scoped S3-compatible secret key. Leave empty to disable remote compiler caching.
     default: ""
 
 outputs:
@@ -62,6 +65,35 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Validate Linux dependency profile
+      shell: bash
+      env:
+        PROFILE: ${{ inputs.linux-dependencies }}
+      run: |
+        case "$PROFILE" in
+          none|build|openssl) ;;
+          *)
+            echo "Unknown Linux dependency profile: $PROFILE" >&2
+            exit 1
+            ;;
+        esac
+
+    - name: Install Linux build dependencies
+      if: runner.os == 'Linux' && inputs.linux-dependencies != 'none'
+      shell: bash
+      env:
+        PROFILE: ${{ inputs.linux-dependencies }}
+      run: |
+        if [[ -f /etc/apt/sources.list.d/ubuntu.sources ]]; then
+          sudo sed -i 's|http://|https://|g' /etc/apt/sources.list.d/ubuntu.sources
+        fi
+        packages=(build-essential pkg-config)
+        if [[ "$PROFILE" == openssl ]]; then
+          packages+=(libssl-dev)
+        fi
+        sudo apt-get update
+        sudo apt-get install -y "${packages[@]}"
+
     - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
       with:
         toolchain: ${{ inputs.toolchain }}
@@ -113,10 +145,10 @@ runs:
         path: ${{ inputs.windows-sparse-index-path }}
         key: ${{ inputs.windows-sparse-index-key || format('{0}-windows-sparse-index-{1}-{2}-v1', github.repository, inputs.toolchain, steps.lockfile.outputs.hash) }}
 
-    - uses: $/setup-sccache
+    - uses: $/.github/actions/setup-sccache
       id: sccache-enabled
       with:
-        endpoint: ${{ inputs.sccache-endpoint }}
-        bucket: ${{ inputs.sccache-bucket }}
-        access-key: ${{ inputs.sccache-access-key }}
-        secret-key: ${{ inputs.sccache-secret-key }}
+        endpoint: ${{ inputs.compiler-cache-endpoint }}
+        bucket: ${{ inputs.compiler-cache-bucket }}
+        access-key: ${{ inputs.compiler-cache-access-key }}
+        secret-key: ${{ inputs.compiler-cache-secret-key }}

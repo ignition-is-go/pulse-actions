@@ -1,42 +1,17 @@
 # pulse-actions
 
-Reusable, read-only Rust CI for Pulse repositories.
+Reusable, read-only Rust CI building blocks.
 
-The repository exports four reusable workflows and five composite actions:
+The v1 contract exports two composite actions and four reusable workflows:
 
-- `rust-check.yml` runs `fmt`, `clippy`, and tests on the public Linux runner pool.
-- `cargo-flux-check.yml` runs a fixed list of Cargo Flux tasks on the public Linux runner pool.
-- `rust-native.yml` builds one binary package on Linux, macOS, and Windows.
-- `workflow-validation.yml` checks workflow syntax, embedded shell, and runner labels in one Linux job.
-- `rust-job-setup` checks out a repository, records its starting resources, installs an approved Linux dependency profile, and configures Rust and caching. It leaves the repository's exact Cargo commands and runner selection in the caller.
-- `setup-rust` installs a pinned toolchain and restores the platform cache.
-- `setup-sccache` sends compiler outputs to a caller-configured S3-compatible cache.
-- `resource-report` writes runner CPU, memory, and storage data to the job summary.
-- `validate-workflows` installs pinned validators under the job temporary directory.
+- `actions/setup-rust` installs Rust, optional Linux build dependencies, and Cargo caches.
+- `actions/report-resources` records CPU, memory, storage, and compiler-cache statistics without exposing runner identity.
+- `rust-quality.yml` runs formatting, Clippy, and tests.
+- `cargo-flux-quality.yml` runs a caller-selected list of Cargo Flux tasks.
+- `rust-native-build.yml` builds one package for native Linux, macOS, and Windows targets.
+- `validate-workflows.yml` checks workflow syntax, embedded shell, and immutable action references.
 
-Use `rust-job-setup` for repositories whose commands do not exactly match one
-of the reusable workflows:
-
-```yaml
-jobs:
-  check:
-    runs-on: ci-public-linux-ephemeral
-    steps:
-      - uses: ignition-is-go/pulse-actions/rust-job-setup@0123456789abcdef0123456789abcdef01234567
-        with:
-          components: rustfmt,clippy
-          linux-dependencies: base
-          sccache-endpoint: ${{ secrets.CI_CACHE_ENDPOINT }}
-          sccache-bucket: ${{ secrets.CI_CACHE_BUCKET }}
-          sccache-access-key: ${{ secrets.CI_CACHE_ACCESS_KEY }}
-          sccache-secret-key: ${{ secrets.CI_CACHE_SECRET_KEY }}
-      - run: cargo fmt --all -- --check
-      - run: cargo test --workspace
-      - uses: ignition-is-go/pulse-actions/resource-report@0123456789abcdef0123456789abcdef01234567
-        if: always()
-```
-
-Callers pin a full commit SHA. Release, publishing, signing, and other privileged jobs stay in the calling repository.
+Callers own triggers, concurrency, runner selection, release policy, and product-specific commands. Pin every reference to a full commit SHA and keep the release tag in a comment for update discovery:
 
 ```yaml
 permissions:
@@ -44,10 +19,36 @@ permissions:
 
 jobs:
   check:
-    uses: ignition-is-go/pulse-actions/.github/workflows/rust-check.yml@0123456789abcdef0123456789abcdef01234567
-    secrets: inherit
+    uses: ignition-is-go/pulse-actions/.github/workflows/rust-quality.yml@0123456789abcdef0123456789abcdef01234567 # v1.0.0
+    with:
+      runner-json: '"ubuntu-24.04"'
+    secrets:
+      CI_CACHE_ENDPOINT: ${{ secrets.CI_CACHE_ENDPOINT }}
+      CI_CACHE_BUCKET: ${{ secrets.CI_CACHE_BUCKET }}
+      CI_CACHE_ACCESS_KEY: ${{ secrets.CI_CACHE_ACCESS_KEY }}
+      CI_CACHE_SECRET_KEY: ${{ secrets.CI_CACHE_SECRET_KEY }}
 ```
 
-Configure `CI_CACHE_ENDPOINT`, `CI_CACHE_BUCKET`, `CI_CACHE_ACCESS_KEY`, and `CI_CACHE_SECRET_KEY` as caller-repository secrets. Jobs without the complete configuration, including fork pull requests, run normally with remote compiler caching disabled. Remote `uses:` references in workflows and local composite actions must use a full commit SHA or container digest.
+Custom jobs compose the actions directly:
 
-See [the design](docs/design.md) for the contract and security boundary.
+```yaml
+steps:
+  - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+    with:
+      persist-credentials: false
+  - uses: ignition-is-go/pulse-actions/actions/setup-rust@0123456789abcdef0123456789abcdef01234567 # v1.0.0
+    with:
+      components: rustfmt,clippy
+      linux-dependencies: build
+      compiler-cache-endpoint: ${{ secrets.CI_CACHE_ENDPOINT }}
+      compiler-cache-bucket: ${{ secrets.CI_CACHE_BUCKET }}
+      compiler-cache-access-key: ${{ secrets.CI_CACHE_ACCESS_KEY }}
+      compiler-cache-secret-key: ${{ secrets.CI_CACHE_SECRET_KEY }}
+  - run: cargo test --workspace
+  - uses: ignition-is-go/pulse-actions/actions/report-resources@0123456789abcdef0123456789abcdef01234567 # v1.0.0
+    if: always()
+```
+
+All four compiler-cache values must be provided together. If they are absent, including on fork pull requests, the build runs without remote compiler caching. The endpoint scheme selects encrypted (`https`) or unencrypted (`http`) transport.
+
+See [the public contract](docs/contract.md), [design](docs/design.md), and [release policy](docs/releases.md).

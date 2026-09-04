@@ -12,7 +12,7 @@ runs:
           echo '## Runner resources'
           echo
           echo '```text'
-          echo "runner=$RUNNER_NAME os=$RUNNER_OS arch=$RUNNER_ARCH"
+          echo "os=$RUNNER_OS arch=$RUNNER_ARCH"
           getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.logicalcpu
           if command -v free >/dev/null 2>&1; then free -h; else vm_stat; fi
           df -h .
@@ -33,7 +33,7 @@ runs:
           '## Runner resources'
           ''
           '```text'
-          "runner=$env:RUNNER_NAME os=$env:RUNNER_OS arch=$env:RUNNER_ARCH"
+          "os=$env:RUNNER_OS arch=$env:RUNNER_ARCH"
           "logical_processors=$([Environment]::ProcessorCount)"
           "total_physical_memory=$($computer.TotalPhysicalMemory)"
           (Get-PSDrive -PSProvider FileSystem | Select-Object Name, Used, Free | Format-Table -AutoSize | Out-String).Trim()
