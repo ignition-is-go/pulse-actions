@@ -1,0 +1,22 @@
+name: Workflow validation
+
+on:
+  workflow_call:
+    inputs:
+      runner-json:
+        type: string
+        default: '"ci-public-linux-ephemeral"'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Workflow validation
+    runs-on: ${{ fromJSON(inputs.runner-json) }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: $/validate-workflows

@@ -1,0 +1,19 @@
+self-hosted-runner:
+  labels:
+    - ci-public-linux-ephemeral
+    - ci-private-linux-ephemeral
+    - ci-windows-ephemeral
+    - ci-macos-ephemeral
+    - ci-trusted-linux-persistent
+    - ci-trusted-windows-persistent
+    - ci-trusted-macos-persistent
+    - ci-release-persistent
+    - site-*
+    - cpu-ge-*
+    - ram-ge-*
+    - disk-ge-*
+paths:
+  .github/workflows/*.{yml,yaml}:
+    ignore:
+      - 'specifying action "\$/.*" in invalid format'
+      - 'reusable workflow call "\$/.*" at "uses" is not following'

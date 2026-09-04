@@ -2,14 +2,16 @@
 
 Reusable, read-only Rust CI for Pulse repositories.
 
-The repository exports three reusable workflows and three composite actions:
+The repository exports four reusable workflows and four composite actions:
 
 - `rust-check.yml` runs `fmt`, `clippy`, and tests on the public Linux runner pool.
 - `cargo-flux-check.yml` runs a fixed list of Cargo Flux tasks on the public Linux runner pool.
 - `rust-native.yml` builds one binary package on Linux, macOS, and Windows.
+- `workflow-validation.yml` checks workflow syntax, embedded shell, and runner labels in one Linux job.
 - `setup-rust` installs a pinned toolchain and restores the platform cache.
 - `setup-sccache` sends compiler outputs to a caller-configured S3-compatible cache.
 - `resource-report` writes runner CPU, memory, and storage data to the job summary.
+- `validate-workflows` installs pinned validators under the job temporary directory.
 
 Callers pin a full commit SHA. Release, publishing, signing, and other privileged jobs stay in the calling repository.
 

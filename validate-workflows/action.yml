@@ -1,0 +1,9 @@
+name: Validate GitHub Actions workflows
+description: Validate workflow syntax, embedded shell, and Pulse runner labels.
+
+runs:
+  using: composite
+  steps:
+    - name: Install validators and check workflows
+      shell: bash
+      run: "${GITHUB_ACTION_PATH}/check.sh"
