@@ -25,12 +25,6 @@ while IFS= read -r -d '' file; do
       "$file" "$line_number" "$reference" >&2
     status=1
   done < <(grep -nE '^[[:space:]-]*uses:[[:space:]]*' "$file" || true)
-done < <(
-  find . -type f \
-    \( -path './.github/workflows/*.yml' -o -path './.github/workflows/*.yaml' \
-       -o -path './.github/actions/*/action.yml' -o -path './.github/actions/*/action.yaml' \
-       -o -path './action.yml' -o -path './action.yaml' \) \
-    -print0
-)
+done < <(git ls-files -z | grep -zE '(^|/)action\.ya?ml$|^\.github/workflows/.*\.ya?ml$')
 
 exit "$status"

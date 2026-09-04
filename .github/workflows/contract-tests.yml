@@ -1,0 +1,49 @@
+name: Contract tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  setup-rust:
+    name: setup-rust (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: $/actions/setup-rust
+        with:
+          toolchain: stable
+          components: rustfmt,clippy
+          cache-workspaces: fixtures/rust-job
+          cache-shared-key: contract-v1
+          cache-targets: "false"
+      - name: Exercise the configured job
+        run: cargo test --locked --manifest-path fixtures/rust-job/Cargo.toml
+      - uses: $/actions/report-resources
+        if: always()
+
+  public-contract:
+    name: public contract
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - run: ./scripts/check-public-contract.sh
+      - run: ./scripts/test-action-pin-check.sh
+      - run: ./scripts/test-workflow-validation.sh

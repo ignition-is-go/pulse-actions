@@ -1,4 +1,4 @@
-name: Cargo Flux check
+name: Cargo Flux quality
 
 on:
   workflow_call:
@@ -16,9 +16,9 @@ on:
       targets:
         type: string
         default: ""
-      runner-json:
+      linux-runner-json:
         type: string
-        default: '"ubuntu-24.04"'
+        required: true
       timeout-minutes:
         type: number
         default: 45
@@ -41,7 +41,7 @@ env:
 jobs:
   check:
     name: Cargo Flux check
-    runs-on: ${{ fromJSON(inputs.runner-json) }}
+    runs-on: ${{ fromJSON(inputs.linux-runner-json) }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -49,24 +49,18 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           persist-credentials: false
-      - uses: $/resource-report
-      - name: Install Linux build dependencies
-        run: |
-          if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
-            sudo sed -i 's|http://|https://|g' /etc/apt/sources.list.d/ubuntu.sources
-          fi
-          sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libssl-dev
-      - uses: $/setup-rust
+      - uses: $/actions/report-resources
+      - uses: $/actions/setup-rust
         with:
           toolchain: ${{ inputs.toolchain }}
           components: clippy
           targets: ${{ inputs.targets }}
-          cache-shared-key: cargo-flux-check-v1
-          sccache-endpoint: ${{ secrets.CI_CACHE_ENDPOINT }}
-          sccache-bucket: ${{ secrets.CI_CACHE_BUCKET }}
-          sccache-access-key: ${{ secrets.CI_CACHE_ACCESS_KEY }}
-          sccache-secret-key: ${{ secrets.CI_CACHE_SECRET_KEY }}
+          linux-dependencies: openssl
+          cache-shared-key: cargo-flux-quality-v1
+          compiler-cache-endpoint: ${{ secrets.CI_CACHE_ENDPOINT }}
+          compiler-cache-bucket: ${{ secrets.CI_CACHE_BUCKET }}
+          compiler-cache-access-key: ${{ secrets.CI_CACHE_ACCESS_KEY }}
+          compiler-cache-secret-key: ${{ secrets.CI_CACHE_SECRET_KEY }}
       - name: Install Cargo Flux
         env:
           CARGO_FLUX_VERSION: ${{ inputs.cargo-flux-version }}
@@ -78,5 +72,5 @@ jobs:
           for task in $FLUX_TASKS; do
             cargo flux run "$task"
           done
-      - uses: $/resource-report
+      - uses: $/actions/report-resources
         if: always()

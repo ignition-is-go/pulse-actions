@@ -1,0 +1,113 @@
+name: Rust native build
+
+on:
+  workflow_call:
+    inputs:
+      package:
+        type: string
+        required: true
+      toolchain:
+        type: string
+        default: stable
+      linux-runner-json:
+        type: string
+        required: true
+      macos-runner-json:
+        type: string
+        required: true
+      windows-runner-json:
+        type: string
+        required: true
+      timeout-minutes:
+        type: number
+        default: 30
+      linux-compiler-cache:
+        type: boolean
+        default: true
+      macos-compiler-cache:
+        type: boolean
+        default: true
+      windows-compiler-cache:
+        type: boolean
+        default: true
+      windows-target-cache:
+        type: boolean
+        default: true
+    secrets:
+      CI_CACHE_ENDPOINT:
+        required: false
+      CI_CACHE_BUCKET:
+        required: false
+      CI_CACHE_ACCESS_KEY:
+        required: false
+      CI_CACHE_SECRET_KEY:
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x64
+            runner-json: ${{ inputs.linux-runner-json }}
+            target: x86_64-unknown-linux-gnu
+            compiler-cache: ${{ inputs.linux-compiler-cache }}
+            target-cache: true
+          - name: macOS x64
+            runner-json: ${{ inputs.macos-runner-json }}
+            target: x86_64-apple-darwin
+            compiler-cache: ${{ inputs.macos-compiler-cache }}
+            target-cache: true
+          - name: macOS arm64
+            runner-json: ${{ inputs.macos-runner-json }}
+            target: aarch64-apple-darwin
+            compiler-cache: ${{ inputs.macos-compiler-cache }}
+            target-cache: true
+          - name: Windows x64
+            runner-json: ${{ inputs.windows-runner-json }}
+            target: x86_64-pc-windows-msvc
+            compiler-cache: ${{ inputs.windows-compiler-cache }}
+            target-cache: ${{ inputs.windows-target-cache }}
+    runs-on: ${{ fromJSON(matrix.runner-json) }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
+        if: runner.os == 'Windows'
+      - uses: $/actions/report-resources
+      - uses: $/actions/setup-rust
+        with:
+          toolchain: ${{ inputs.toolchain }}
+          targets: ${{ matrix.target }}
+          cache-shared-key: native-${{ matrix.target }}-v1
+          cache-targets: ${{ matrix.target-cache }}
+          linux-dependencies: openssl
+          windows-sparse-index: ${{ runner.os == 'Windows' }}
+          compiler-cache-endpoint: ${{ matrix.compiler-cache && secrets.CI_CACHE_ENDPOINT || '' }}
+          compiler-cache-bucket: ${{ matrix.compiler-cache && secrets.CI_CACHE_BUCKET || '' }}
+          compiler-cache-access-key: ${{ matrix.compiler-cache && secrets.CI_CACHE_ACCESS_KEY || '' }}
+          compiler-cache-secret-key: ${{ matrix.compiler-cache && secrets.CI_CACHE_SECRET_KEY || '' }}
+      - name: Build on Linux or macOS
+        if: runner.os != 'Windows'
+        env:
+          PACKAGE: ${{ inputs.package }}
+          TARGET: ${{ matrix.target }}
+        run: cargo build --release --locked --package "$PACKAGE" --target "$TARGET"
+      - name: Build on Windows
+        if: runner.os == 'Windows'
+        env:
+          PACKAGE: ${{ inputs.package }}
+          TARGET: ${{ matrix.target }}
+        run: cargo build --release --locked --package "$env:PACKAGE" --target "$env:TARGET"
+      - uses: $/actions/report-resources
+        if: always()

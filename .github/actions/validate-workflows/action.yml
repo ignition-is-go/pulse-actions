@@ -1,5 +1,5 @@
 name: Validate GitHub Actions workflows
-description: Validate workflow syntax, embedded shell, and Pulse runner labels.
+description: Validate workflow syntax, embedded shell, and immutable action references.
 
 runs:
   using: composite

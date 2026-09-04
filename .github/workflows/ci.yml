@@ -40,7 +40,9 @@ jobs:
       - name: Verify lockfile hash is captured once
         run: ./scripts/check-lockfile-hash-capture.sh
       - name: Reject mutable action references
-        run: ./validate-workflows/check-action-pins.sh
+        run: ./.github/actions/validate-workflows/check-action-pins.sh
+      - name: Verify the public contract
+        run: ./scripts/check-public-contract.sh
 
   zizmor:
     name: zizmor

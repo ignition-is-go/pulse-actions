@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly action=setup-rust/action.yml
+readonly action=actions/setup-rust/action.yml
 readonly hash_expression="hashFiles('**/Cargo.lock')"
 readonly producer="      run: echo \"hash=\${{ $hash_expression }}\" >> \"\$GITHUB_OUTPUT\""
 readonly registry_consumer='        key: ${{ github.repository }}-${{ runner.os }}-${{ runner.arch }}-cargo-registry-${{ inputs.toolchain }}-${{ inputs.cache-shared-key }}-${{ steps.lockfile.outputs.hash }}-v1'

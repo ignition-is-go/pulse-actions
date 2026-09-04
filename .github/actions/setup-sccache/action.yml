@@ -116,12 +116,13 @@ runs:
         ACCESS_KEY: ${{ inputs.access-key }}
         SECRET_KEY: ${{ inputs.secret-key }}
       run: |
+        use_ssl=$("$GITHUB_ACTION_PATH/resolve-endpoint.sh" "$ENDPOINT")
         {
           echo 'RUSTC_WRAPPER=sccache'
           echo "SCCACHE_BUCKET=$BUCKET"
           echo "SCCACHE_ENDPOINT=$ENDPOINT"
           echo 'SCCACHE_REGION=auto'
-          echo 'SCCACHE_S3_USE_SSL=false'
+          echo "SCCACHE_S3_USE_SSL=$use_ssl"
           echo 'SCCACHE_S3_KEY_PREFIX=rust/v1'
           echo "SCCACHE_BASEDIRS=$GITHUB_WORKSPACE"
           echo "AWS_ACCESS_KEY_ID=$ACCESS_KEY"
@@ -137,9 +138,10 @@ runs:
         SCCACHE_BUCKET: ${{ inputs.bucket }}
         SCCACHE_ENDPOINT: ${{ inputs.endpoint }}
         SCCACHE_REGION: auto
-        SCCACHE_S3_USE_SSL: "false"
         SCCACHE_S3_KEY_PREFIX: rust/v1
         SCCACHE_BASEDIRS: ${{ github.workspace }}
       run: |
+        SCCACHE_S3_USE_SSL=$("$GITHUB_ACTION_PATH/resolve-endpoint.sh" "$SCCACHE_ENDPOINT")
+        export SCCACHE_S3_USE_SSL
         sccache --start-server
         sccache --zero-stats
