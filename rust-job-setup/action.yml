@@ -1,0 +1,99 @@
+name: Prepare Rust CI job
+description: Check out a repository and prepare a measured, cached Rust CI job.
+
+inputs:
+  toolchain:
+    description: Rust toolchain channel or version.
+    default: stable
+  components:
+    description: Comma-separated Rust components.
+    default: ""
+  targets:
+    description: Comma-separated Rust targets.
+    default: ""
+  linux-dependencies:
+    description: Approved Linux dependency profile (none, base, or openssl).
+    default: none
+  cache-workspaces:
+    description: Newline-separated Cargo workspace paths.
+    default: .
+  cache-shared-key:
+    description: Extra cache-key material controlled by the caller.
+    default: rust-ci-v1
+  cache-targets:
+    description: Cache Cargo target directories with the GitHub cache service.
+    default: "true"
+  sccache-access-key:
+    description: Bucket-scoped S3-compatible cache access key.
+    default: ""
+  sccache-endpoint:
+    description: S3-compatible compiler-cache endpoint URL.
+    default: ""
+  sccache-bucket:
+    description: S3-compatible compiler-cache bucket.
+    default: ""
+  sccache-secret-key:
+    description: Bucket-scoped S3-compatible cache secret key.
+    default: ""
+
+outputs:
+  rust-cache-hit:
+    description: Whether the Cargo cache matched its primary key.
+    value: ${{ steps.rust.outputs.rust-cache-hit }}
+  offline:
+    description: Whether every enabled Cargo cache matched its primary key.
+    value: ${{ steps.rust.outputs.offline }}
+  compiler-cache-enabled:
+    description: Whether the remote compiler-output cache was configured.
+    value: ${{ steps.rust.outputs.compiler-cache-enabled }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      with:
+        persist-credentials: false
+
+    - uses: $/resource-report
+
+    - name: Install Linux build dependencies
+      if: runner.os == 'Linux'
+      shell: bash
+      env:
+        DEPENDENCY_PROFILE: ${{ inputs.linux-dependencies }}
+      run: |
+        case "$DEPENDENCY_PROFILE" in
+          none)
+            exit 0
+            ;;
+          base)
+            packages=(build-essential pkg-config)
+            ;;
+          openssl)
+            packages=(build-essential pkg-config libssl-dev)
+            ;;
+          *)
+            echo "Unsupported Linux dependency profile: $DEPENDENCY_PROFILE" >&2
+            exit 1
+            ;;
+        esac
+
+        if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
+          sudo sed -i 's|http://|https://|g' /etc/apt/sources.list.d/ubuntu.sources
+        fi
+        sudo apt-get update
+        sudo apt-get install -y "${packages[@]}"
+
+    - uses: $/setup-rust
+      id: rust
+      with:
+        toolchain: ${{ inputs.toolchain }}
+        components: ${{ inputs.components }}
+        targets: ${{ inputs.targets }}
+        cache-workspaces: ${{ inputs.cache-workspaces }}
+        cache-shared-key: ${{ inputs.cache-shared-key }}
+        cache-targets: ${{ inputs.cache-targets }}
+        sccache-endpoint: ${{ inputs.sccache-endpoint }}
+        sccache-bucket: ${{ inputs.sccache-bucket }}
+        sccache-access-key: ${{ inputs.sccache-access-key }}
+        sccache-secret-key: ${{ inputs.sccache-secret-key }}

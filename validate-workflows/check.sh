@@ -32,3 +32,5 @@ tar -xzf "${install_dir}/shellcheck.tar.gz" -C "${install_dir}" \
 
 PATH="${install_dir}:${PATH}" actionlint \
   -config-file "${GITHUB_ACTION_PATH}/actionlint.yaml"
+
+"${GITHUB_ACTION_PATH}/check-action-pins.sh"
