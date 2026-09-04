@@ -49,6 +49,16 @@ steps:
     if: always()
 ```
 
-All four compiler-cache values must be provided together. If they are absent, including on fork pull requests, the build runs without remote compiler caching. The endpoint scheme selects encrypted (`https`) or unencrypted (`http`) transport.
+Remote compiler caching supports three authentication modes. `static` is the default and preserves v1.0 behavior. A completely empty static configuration disables the remote cache, including on fork pull requests.
+
+| `compiler-cache-auth` | Required values | Credential source | Access |
+| --- | --- | --- | --- |
+| `static` | endpoint, bucket, access key, secret key | action inputs; session token optional | read/write |
+| `ambient` | endpoint, bucket | runner environment, AWS profile, IMDS, or web identity | provider policy |
+| `anonymous` | endpoint, bucket | none | read-only |
+
+Reusable workflows accept endpoint and bucket as non-secret inputs or through the legacy `CI_CACHE_ENDPOINT` and `CI_CACHE_BUCKET` secrets. A nonempty input takes precedence over its matching secret. This lets fork pull requests use an anonymous cache without receiving secrets.
+
+Anonymous mode requires a clean environment without `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY`, and fails before installation if either is inherited. The endpoint scheme selects encrypted (`https`) or unencrypted (`http`) transport. Direct `setup-rust` callers may establish credentials first and grant the required permissions themselves. Reusable workflows only use credentials already present on the runner and do not acquire OIDC credentials. Pulse Actions does not request identity permissions or accept executable commands.
 
 See [the public contract](docs/contract.md), [v1 migration guide](docs/migrating-to-v1.md), [design](docs/design.md), and [release policy](docs/releases.md).
