@@ -18,4 +18,8 @@ printf '%s\n' \
   > "$fixture/.github/workflows/self-reference.yml"
 git -C "$fixture" add .github/workflows/self-reference.yml
 
-(cd "$fixture" && GITHUB_WORKSPACE="$fixture" GITHUB_ACTION_PATH="$validator" "$validator/check.sh")
+(cd "$fixture" && \
+  RUNNER_TEMP="${RUNNER_TEMP:-/tmp}" \
+  GITHUB_WORKSPACE="$fixture" \
+  GITHUB_ACTION_PATH="$validator" \
+  "$validator/check.sh")

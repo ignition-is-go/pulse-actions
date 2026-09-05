@@ -36,8 +36,11 @@ inputs:
     description: Approved Linux dependency profile (none, build, or openssl).
     default: none
   compiler-cache-access-key:
-    description: Bucket-scoped S3-compatible access key. Leave empty to disable remote compiler caching.
+    description: Bucket-scoped S3-compatible access key for static authentication.
     default: ""
+  compiler-cache-auth:
+    description: Compiler-cache authentication mode (static, ambient, or anonymous).
+    default: static
   compiler-cache-endpoint:
     description: S3-compatible compiler-cache endpoint URL.
     default: ""
@@ -45,7 +48,10 @@ inputs:
     description: S3-compatible compiler-cache bucket.
     default: ""
   compiler-cache-secret-key:
-    description: Bucket-scoped S3-compatible secret key. Leave empty to disable remote compiler caching.
+    description: Bucket-scoped S3-compatible secret key for static authentication.
+    default: ""
+  compiler-cache-session-token:
+    description: Optional S3-compatible session token for static authentication.
     default: ""
 
 outputs:
@@ -148,7 +154,9 @@ runs:
     - uses: $/.github/actions/setup-sccache
       id: sccache-enabled
       with:
+        auth: ${{ inputs.compiler-cache-auth }}
         endpoint: ${{ inputs.compiler-cache-endpoint }}
         bucket: ${{ inputs.compiler-cache-bucket }}
         access-key: ${{ inputs.compiler-cache-access-key }}
         secret-key: ${{ inputs.compiler-cache-secret-key }}
+        session-token: ${{ inputs.compiler-cache-session-token }}
