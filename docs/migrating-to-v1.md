@@ -18,4 +18,4 @@ Reusable workflows were renamed as follows:
 | `rust-native.yml` | `rust-native-build.yml` |
 | `workflow-validation.yml` | `validate-workflows.yml` |
 
-Replace the pre-v1 revision with the full `v1.0.0` commit SHA only after the release tag exists.
+Replace the pre-v1 revision with an exact stable release tag only after the annotated tag and its protection have been verified. Full commit SHAs remain valid for acceptance testing before a release tag exists.

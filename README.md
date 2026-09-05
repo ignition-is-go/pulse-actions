@@ -11,7 +11,7 @@ The v1 contract exports two composite actions and four reusable workflows:
 - `rust-native-build.yml` builds one package for native Linux, macOS, and Windows targets.
 - `validate-workflows.yml` checks workflow syntax, embedded shell, and immutable action references.
 
-Callers own triggers, concurrency, runner selection, release policy, and product-specific commands. Pin every reference to a full commit SHA and keep the release tag in a comment for update discovery:
+Callers own triggers, concurrency, runner selection, release policy, and product-specific commands. Use an exact protected semantic-version tag for a public Pulse Actions entry point. Pin every third-party action to a full commit SHA:
 
 ```yaml
 permissions:
@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   check:
-    uses: ignition-is-go/pulse-actions/.github/workflows/rust-quality.yml@0123456789abcdef0123456789abcdef01234567 # v1.0.0
+    uses: ignition-is-go/pulse-actions/.github/workflows/rust-quality.yml@v1.1.0
     with:
       runner-json: '"ubuntu-24.04"'
     secrets:
@@ -36,7 +36,7 @@ steps:
   - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
     with:
       persist-credentials: false
-  - uses: ignition-is-go/pulse-actions/actions/setup-rust@0123456789abcdef0123456789abcdef01234567 # v1.0.0
+  - uses: ignition-is-go/pulse-actions/actions/setup-rust@v1.1.0
     with:
       components: rustfmt,clippy
       linux-dependencies: build
@@ -45,7 +45,7 @@ steps:
       compiler-cache-access-key: ${{ secrets.CI_CACHE_ACCESS_KEY }}
       compiler-cache-secret-key: ${{ secrets.CI_CACHE_SECRET_KEY }}
   - run: cargo test --workspace
-  - uses: ignition-is-go/pulse-actions/actions/report-resources@0123456789abcdef0123456789abcdef01234567 # v1.0.0
+  - uses: ignition-is-go/pulse-actions/actions/report-resources@v1.1.0
     if: always()
 ```
 

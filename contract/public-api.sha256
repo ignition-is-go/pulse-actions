@@ -4,7 +4,7 @@ aff87c3e739782bbc5c0fba81168d059fef3d94a4534b521faa6e9c4c931ec27  .github/action
 ffb4360888411f469872402e92f0b8d771b5fce9076cdd4f8379a575372b9dc7  .github/actions/setup-sccache/resolve-endpoint.sh
 657befafbfa300dd1f8ef98d6aeb0825b8b09d211212ef62a1d97f108de96b12  .github/actions/setup-sccache/validate-single-line-env.sh
 9bde93829a51a3efbc44bedc9881b65b8f3e801f70192882e4ef0f706c2dfa9b  .github/actions/validate-workflows/action.yml
-52e85eab77bc6774b4d55746443f0edd4fedd4de76406f8fad4422e923ba6f55  .github/actions/validate-workflows/check-action-pins.sh
+a740d4cdc1bb39707e57c52831c0463263e943d1d5a7cbaad4ed91383b1f7a99  .github/actions/validate-workflows/check-action-pins.sh
 7468d0c57fabea9cdaa968da7b96ccb3e9b37bf2f133cdc8af2ed9df3e85f3c0  .github/actions/validate-workflows/check.sh
 32c230c394bc6416248a1c2f4acc6c329d0c056a9f997927c49078a35908893b  .github/workflows/cargo-flux-quality.yml
 73dbb728dbdd70c8ce5a0c36b6ea46e8af936a3b0550470628c12c703b96fe9d  .github/workflows/rust-native-build.yml

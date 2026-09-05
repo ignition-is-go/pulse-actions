@@ -8,6 +8,8 @@
 - Let reusable workflows take non-secret cache locations for anonymous fork access.
 - Reject mixed credential modes and multiline environment values before installation.
 - Require the contract checksum to cover every public entry point and internal action file.
+- Allow public Pulse Actions entry points to use exact protected stable tags while retaining full-SHA pins for third-party actions.
+- Reject malformed quoted references and comments embedded inside quoted `uses` values.
 
 ## v1.0.0
 

@@ -25,4 +25,6 @@ Reusable workflows accept endpoint and bucket as non-secret inputs. A nonempty i
 
 ## Security
 
-Third-party actions use full commit SHAs and container actions use image digests. Workflow validation checks all tracked workflow and `action.yml` files. The contract checksum includes every public entry point and every tracked internal action file. Public-surface checks reject private network addresses, private hostnames, runner identities, and estate-specific runner-label conventions.
+Public Pulse Actions entry points may use exact stable semantic-version tags. The validator derives those entry points from `contract/public-api.txt` and rejects moving tags, prereleases, tagged private paths, and tags on other repositories. Third-party actions use full commit SHAs and container actions use image digests. Full commit SHAs remain valid for every remote action.
+
+Workflow validation checks all tracked workflow and `action.yml` files. It validates reference syntax but cannot prove that a tag exists or is protected. The release procedure verifies the annotated tag and GitHub tag ruleset before consumers adopt it. The contract checksum includes every public entry point and every tracked internal action file. Public-surface checks reject private network addresses, private hostnames, runner identities, and estate-specific runner-label conventions.

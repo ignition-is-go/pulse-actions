@@ -2,18 +2,97 @@
 set -euo pipefail
 
 readonly checker="$PWD/.github/actions/validate-workflows/check-action-pins.sh"
-readonly fixture="${RUNNER_TEMP:-/tmp}/pulse-actions-pin-test"
+readonly fixture=$(mktemp -d "${RUNNER_TEMP:-/tmp}/pulse-actions-pin-test.XXXXXX")
+trap 'rm -rf "$fixture"' EXIT
 
-rm -rf "$fixture"
-mkdir -p "$fixture/exported"
 git -C "$fixture" init -q
-printf '%s\n' 'runs:' '  using: composite' '  steps:' '    - uses: owner/action@main' > "$fixture/exported/action.yml"
-git -C "$fixture" add exported/action.yml
 
-if (cd "$fixture" && "$checker" >/dev/null 2>&1); then
-  echo 'The pin checker accepted a mutable reference in an exported action.' >&2
-  exit 1
-fi
+write_fixture() {
+  local path=$1
+  local uses=$2
 
-sed -i 's/@main/@0123456789abcdef0123456789abcdef01234567/' "$fixture/exported/action.yml"
-(cd "$fixture" && "$checker")
+  mkdir -p "$(dirname "$fixture/$path")"
+  if [[ "$path" == .github/workflows/* ]]; then
+    printf '%s\n' \
+      'name: Pin fixture' \
+      'on: push' \
+      'jobs:' \
+      '  check:' \
+      '    runs-on: ubuntu-24.04' \
+      '    steps:' \
+      "      - uses: $uses" \
+      > "$fixture/$path"
+  else
+    printf '%s\n' \
+      'runs:' \
+      '  using: composite' \
+      '  steps:' \
+      "    - uses: $uses" \
+      > "$fixture/$path"
+  fi
+  git -C "$fixture" add "$path"
+}
+
+assert_reference() {
+  local expectation=$1
+  local path=$2
+  local reference=$3
+  local output
+
+  rm -rf "$fixture/exported" "$fixture/.github"
+  git -C "$fixture" read-tree --empty
+  write_fixture "$path" "$reference"
+  if output=$(cd "$fixture" && "$checker" 2>&1); then
+    if [[ "$expectation" == reject ]]; then
+      printf 'accepted invalid reference in %s: %s\n' "$path" "$reference" >&2
+      exit 1
+    fi
+  elif [[ "$expectation" == accept ]]; then
+    printf 'rejected valid reference in %s: %s\n%s\n' "$path" "$reference" "$output" >&2
+    exit 1
+  elif [[ "$output" != *"$path:"* ]]; then
+    printf 'diagnostic omitted the source path for %s: %s\n' "$reference" "$output" >&2
+    exit 1
+  fi
+}
+
+readonly sha=0123456789abcdef0123456789abcdef01234567
+readonly digest=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
+cases=(
+  "accept|actions/checkout@$sha"
+  "accept|\"actions/checkout@$sha\" # v6.1.0"
+  "accept|'actions/checkout@$sha' # v6.1.0"
+  'accept|./actions/local'
+  'accept|$/.github/actions/local'
+  "accept|docker://example/image@sha256:$digest"
+  'reject|actions/checkout@main'
+  'reject|actions/checkout@v6'
+  'reject|actions/checkout@${{ github.ref }}'
+  "reject|\"actions/checkout@$sha # inside-value\""
+  "reject|'actions/checkout@$sha # inside-value'"
+  "reject|\"actions/checkout@$sha\" junk"
+  "reject|\"actions/checkout@$sha"
+  "reject|actions/checkout@$sha#not-a-comment"
+  'reject|lookalike/pulse-actions/actions/setup-rust@v1.1.0'
+  'reject|ignition-is-go/other/actions/setup-rust@v1.1.0'
+  'reject|ignition-is-go/pulse-actions/.github/actions/setup-sccache@v1.1.0'
+  'reject|ignition-is-go/pulse-actions/actions/setup-rust@v1'
+  'reject|ignition-is-go/pulse-actions/actions/setup-rust@v1.1'
+  'reject|ignition-is-go/pulse-actions/actions/setup-rust@v1.1.0-rc.1'
+  'reject|ignition-is-go/pulse-actions/actions/setup-rust@v1.1.0+build'
+  'reject|ignition-is-go/pulse-actions/actions/setup-rust@v01.1.0'
+  'reject|ignition-is-go/pulse-actions/actions/setup-rust@main'
+)
+
+for test_case in "${cases[@]}"; do
+  IFS='|' read -r expectation reference <<< "$test_case"
+  [[ -n "$expectation" ]] || continue
+  assert_reference "$expectation" exported/action.yml "$reference"
+  assert_reference "$expectation" .github/workflows/pins.yml "$reference"
+done
+
+while IFS= read -r path; do
+  assert_reference accept exported/action.yml "ignition-is-go/pulse-actions/$path@v1.1.0"
+  assert_reference accept .github/workflows/pins.yml "\"ignition-is-go/pulse-actions/$path@v1.1.0\" # protected release"
+done < contract/public-api.txt
