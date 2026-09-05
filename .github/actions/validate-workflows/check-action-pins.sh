@@ -31,13 +31,22 @@ install_yq() {
 
 is_public_pulse_actions_tag() {
   local reference=$1
+  local contract_path
   local path
 
   if [[ ! "$reference" =~ ^ignition-is-go/pulse-actions/(.+)@v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
     return 1
   fi
   path=${BASH_REMATCH[1]}
-  grep -Fxq "$path" "$public_api" || grep -Fxq "$path/action.yml" "$public_api"
+  while IFS= read -r contract_path; do
+    case "$contract_path" in
+      actions/*/action.yml) contract_path=${contract_path%/action.yml} ;;
+      .github/workflows/*) ;;
+      *) continue ;;
+    esac
+    [[ "$path" == "$contract_path" ]] && return 0
+  done < "$public_api"
+  return 1
 }
 
 reference_is_allowed() {

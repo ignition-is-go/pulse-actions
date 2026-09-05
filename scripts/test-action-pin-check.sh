@@ -104,6 +104,7 @@ cases=(
   'reject|lookalike/pulse-actions/actions/setup-rust@v1.1.0'
   'reject|ignition-is-go/other/actions/setup-rust@v1.1.0'
   'reject|ignition-is-go/pulse-actions/.github/actions/setup-sccache@v1.1.0'
+  'reject|ignition-is-go/pulse-actions/actions/setup-rust/action.yml@v1.1.0'
   'reject|ignition-is-go/pulse-actions/actions/setup-rust@v1'
   'reject|ignition-is-go/pulse-actions/actions/setup-rust@v1.1'
   'reject|ignition-is-go/pulse-actions/actions/setup-rust@v1.1.0-rc.1'
