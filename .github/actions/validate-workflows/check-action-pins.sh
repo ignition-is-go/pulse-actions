@@ -1,31 +1,32 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly action_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-readonly repository_root=$(cd -- "$action_dir/../../.." && pwd)
+action_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+readonly action_dir
+repository_root=$(cd -- "$action_dir/../../.." && pwd)
+readonly repository_root
 readonly public_api="$repository_root/contract/public-api.txt"
+readonly install_dir="${RUNNER_TEMP:-/tmp}/pulse-workflow-validators"
+readonly yq="$install_dir/yq"
+readonly yq_version=4.53.6
+readonly yq_sha256=c5f056448f973ae7d39b5401949648a78f2dc1947d6a8eb65be60d5c504b9385
+readonly yq_download="$yq.download.$$"
 
-extract_uses_reference() {
-  local line=$1
-  local value
-
-  [[ "$line" =~ ^[[:space:]-]*uses:[[:space:]]*(.*)$ ]] || return 1
-  value=${BASH_REMATCH[1]}
-
-  if [[ "$value" =~ ^([^[:space:]#\'\"]+)([[:space:]]+\#.*)?[[:space:]]*$ ]]; then
-    printf '%s\n' "${BASH_REMATCH[1]}"
-    return 0
-  fi
-  if [[ "$value" =~ ^\'([^\'#]*)\'([[:space:]]+\#.*)?[[:space:]]*$ ]]; then
-    printf '%s\n' "${BASH_REMATCH[1]}"
-    return 0
-  fi
-  if [[ "$value" =~ ^\"([^\"#]*)\"([[:space:]]+\#.*)?[[:space:]]*$ ]]; then
-    printf '%s\n' "${BASH_REMATCH[1]}"
-    return 0
+install_yq() {
+  mkdir -p "$install_dir"
+  if [[ -f "$yq" ]] && printf '%s  %s\n' "$yq_sha256" "$yq" | sha256sum --check --status; then
+    chmod 0755 "$yq"
+    return
   fi
 
-  return 1
+  trap 'rm -f "$yq_download"' EXIT
+  curl --fail --location --retry 3 --silent --show-error \
+    --output "$yq_download" \
+    "https://github.com/mikefarah/yq/releases/download/v${yq_version}/yq_linux_amd64"
+  printf '%s  %s\n' "$yq_sha256" "$yq_download" | sha256sum --check
+  chmod 0755 "$yq_download"
+  mv "$yq_download" "$yq"
+  trap - EXIT
 }
 
 is_public_pulse_actions_tag() {
@@ -36,7 +37,7 @@ is_public_pulse_actions_tag() {
     return 1
   fi
   path=${BASH_REMATCH[1]}
-  grep -Fxq "$path" "$public_api"
+  grep -Fxq "$path" "$public_api" || grep -Fxq "$path/action.yml" "$public_api"
 }
 
 reference_is_allowed() {
@@ -54,16 +55,30 @@ reference_is_allowed() {
   is_public_pulse_actions_tag "$reference"
 }
 
+install_yq
+
+readonly query='.. | select(tag == "!!map") | to_entries[] | select(.key == "uses") | [(.value | line), (.value | tag), ((.value | select(tag == "!!str") | @base64) // "")] | @tsv'
 status=0
 while IFS= read -r -d '' file; do
-  while IFS=: read -r line_number line; do
-    reference=
-    if ! reference=$(extract_uses_reference "$line") || ! reference_is_allowed "$reference"; then
+  if ! records=$("$yq" --unwrapScalar "$query" "$file"); then
+    printf '%s: invalid YAML while checking uses references\n' "$file" >&2
+    status=1
+    continue
+  fi
+  while IFS=$'\t' read -r line_number value_tag encoded_reference; do
+    [[ -n "$line_number" ]] || continue
+    if [[ "$value_tag" != '!!str' ]]; then
+      printf '%s:%s: uses reference must be a string\n' "$file" "$line_number" >&2
+      status=1
+      continue
+    fi
+    reference=$(printf '%s' "$encoded_reference" | base64 --decode)
+    if ! reference_is_allowed "$reference"; then
       printf '%s:%s: mutable or invalid uses reference: %s\n' \
-        "$file" "$line_number" "${reference:-$line}" >&2
+        "$file" "$line_number" "$reference" >&2
       status=1
     fi
-  done < <(grep -nE '^[[:space:]-]*uses:[[:space:]]*' "$file" || true)
+  done <<< "$records"
 done < <(git ls-files -z | grep -zE '(^|/)action\.ya?ml$|^\.github/workflows/.*\.ya?ml$')
 
 exit "$status"

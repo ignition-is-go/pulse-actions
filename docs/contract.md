@@ -21,7 +21,7 @@ The optional `compiler-cache-auth` input accepts `static`, `ambient`, or `anonym
 
 Partial configurations and mixed credential modes fail before sccache is installed. Values written to the job environment must be single-line. Rejected credential values are never printed.
 
-Reusable workflows accept endpoint and bucket as non-secret inputs. A nonempty input takes precedence over its corresponding legacy secret. Direct action callers may acquire credentials before setup. Reusable workflows do not acquire OIDC credentials and only consume credentials already present on the runner.
+Reusable workflows accept endpoint and bucket as non-secret inputs. A nonempty input takes precedence over its corresponding legacy secret. They forward explicit access keys, secret keys, and session tokens only in static mode. Ambient and anonymous modes receive empty explicit credential inputs even when a caller uses `secrets: inherit`. Direct action callers may acquire credentials before setup. Reusable workflows do not acquire OIDC credentials and only consume credentials already present on the runner.
 
 ## Security
 

@@ -103,6 +103,18 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
         if: runner.os == 'Windows'
       - uses: $/actions/report-resources
+      - name: Validate compiler cache authentication mode
+        shell: bash
+        env:
+          AUTH: ${{ inputs.compiler-cache-auth }}
+        run: |
+          case "$AUTH" in
+            static|ambient|anonymous) ;;
+            *)
+              echo 'Compiler-cache authentication must be static, ambient, or anonymous.' >&2
+              exit 1
+              ;;
+          esac
       - uses: $/actions/setup-rust
         with:
           toolchain: ${{ inputs.toolchain }}
@@ -114,9 +126,9 @@ jobs:
           compiler-cache-auth: ${{ matrix.compiler-cache == false && matrix.disabled-compiler-cache-auth || inputs.compiler-cache-auth }}
           compiler-cache-endpoint: ${{ matrix.compiler-cache && (inputs.compiler-cache-endpoint || secrets.CI_CACHE_ENDPOINT) || '' }}
           compiler-cache-bucket: ${{ matrix.compiler-cache && (inputs.compiler-cache-bucket || secrets.CI_CACHE_BUCKET) || '' }}
-          compiler-cache-access-key: ${{ matrix.compiler-cache && secrets.CI_CACHE_ACCESS_KEY || '' }}
-          compiler-cache-secret-key: ${{ matrix.compiler-cache && secrets.CI_CACHE_SECRET_KEY || '' }}
-          compiler-cache-session-token: ${{ matrix.compiler-cache && secrets.CI_CACHE_SESSION_TOKEN || '' }}
+          compiler-cache-access-key: ${{ matrix.compiler-cache && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_ACCESS_KEY || '' }}
+          compiler-cache-secret-key: ${{ matrix.compiler-cache && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SECRET_KEY || '' }}
+          compiler-cache-session-token: ${{ matrix.compiler-cache && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SESSION_TOKEN || '' }}
       - name: Build on Linux or macOS
         if: runner.os != 'Windows'
         env:

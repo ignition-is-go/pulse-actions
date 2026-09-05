@@ -49,7 +49,7 @@ assert_rejects unknown true true false false false false false
 assert_rejects static yes true true true false false false
 
 AUTH=static ENDPOINT=https://cache.example.invalid BUCKET=cache \
-  ACCESS_KEY=access SECRET_KEY=secret SESSION_TOKEN= \
+  ACCESS_KEY=access SECRET_KEY=secret SESSION_TOKEN='' \
   bash "$validator" AUTH ENDPOINT BUCKET ACCESS_KEY SECRET_KEY SESSION_TOKEN
 
 secret_with_newline=$'not-printed\nAWS_ACCESS_KEY_ID=injected'
@@ -75,6 +75,22 @@ for workflow in \
   grep -q 'compiler-cache-session-token:' "$workflow"
 done
 
+for workflow in \
+  .github/workflows/cargo-flux-quality.yml \
+  .github/workflows/rust-quality.yml; do
+  grep -Fq "compiler-cache-access-key: \${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_ACCESS_KEY || '' }}" "$workflow"
+  grep -Fq "compiler-cache-secret-key: \${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SECRET_KEY || '' }}" "$workflow"
+  grep -Fq "compiler-cache-session-token: \${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SESSION_TOKEN || '' }}" "$workflow"
+done
+
+grep -Fq "compiler-cache-access-key: \${{ matrix.compiler-cache && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_ACCESS_KEY || '' }}" \
+  .github/workflows/rust-native-build.yml
+grep -Fq "compiler-cache-secret-key: \${{ matrix.compiler-cache && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SECRET_KEY || '' }}" \
+  .github/workflows/rust-native-build.yml
+grep -Fq "compiler-cache-session-token: \${{ matrix.compiler-cache && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SESSION_TOKEN || '' }}" \
+  .github/workflows/rust-native-build.yml
+grep -Fq "AUTH: \${{ inputs.compiler-cache-auth }}" .github/workflows/rust-native-build.yml
+grep -Fq 'static|ambient|anonymous)' .github/workflows/rust-native-build.yml
 grep -Fq 'matrix.compiler-cache == false && matrix.disabled-compiler-cache-auth || inputs.compiler-cache-auth' \
   .github/workflows/rust-native-build.yml
 
@@ -127,3 +143,31 @@ if AWS_ACCESS_KEY_ID=inherited ENDPOINT=https://cache.example.invalid BUCKET=cac
   echo 'Anonymous mode accepted inherited static AWS credentials.' >&2
   exit 1
 fi
+
+for field in AUTH ENDPOINT BUCKET ACCESS_KEY SECRET_KEY SESSION_TOKEN USE_SSL GITHUB_WORKSPACE; do
+  rejected=$'not-printed\r\ninjected'
+  if [[ "$field" == AUTH ]]; then
+    if ENDPOINT=https://cache.example.invalid BUCKET=cache ACCESS_KEY=access SECRET_KEY=secret \
+      USE_SSL=true GITHUB_WORKSPACE=/workspace \
+      bash "$renderer" "$rejected" >"$validation_output" 2>&1; then
+      printf 'renderer accepted CR/LF in %s.\n' "$field" >&2
+      exit 1
+    fi
+  elif env \
+    ENDPOINT=https://cache.example.invalid \
+    BUCKET=cache \
+    ACCESS_KEY=access \
+    SECRET_KEY=secret \
+    SESSION_TOKEN=token \
+    USE_SSL=true \
+    GITHUB_WORKSPACE=/workspace \
+    "$field=$rejected" \
+    bash "$renderer" static >"$validation_output" 2>&1; then
+    printf 'renderer accepted CR/LF in %s.\n' "$field" >&2
+    exit 1
+  fi
+  if grep -q 'not-printed\|injected' "$validation_output"; then
+    printf 'renderer printed rejected %s content.\n' "$field" >&2
+    exit 1
+  fi
+done

@@ -137,7 +137,7 @@ runs:
         ACCESS_KEY: ${{ inputs.access-key }}
         SECRET_KEY: ${{ inputs.secret-key }}
         SESSION_TOKEN: ${{ inputs.session-token }}
-      run: | # zizmor: ignore[github-env] values are single-line and validated before this step
+      run: | # zizmor: ignore[github-env] inputs and GITHUB_WORKSPACE reject CR/LF; remaining values are constants or closed enums
         use_ssl=$("$GITHUB_ACTION_PATH/resolve-endpoint.sh" "$ENDPOINT")
         USE_SSL=$use_ssl bash "$GITHUB_ACTION_PATH/render-env.sh" "$AUTH" >> "$GITHUB_ENV"
 

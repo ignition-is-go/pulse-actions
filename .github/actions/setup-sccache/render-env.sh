@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+readonly script_dir
 readonly auth=${1:-}
+
+AUTH=$auth bash "$script_dir/validate-single-line-env.sh" \
+  AUTH ENDPOINT BUCKET ACCESS_KEY SECRET_KEY SESSION_TOKEN USE_SSL GITHUB_WORKSPACE
 
 case "$auth" in
   static|ambient|anonymous) ;;
