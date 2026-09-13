@@ -61,4 +61,6 @@ Reusable workflows accept endpoint and bucket as non-secret inputs or through th
 
 Reusable workflows forward explicit credentials only in static mode. Ambient and anonymous modes receive empty explicit credential inputs even when the caller uses `secrets: inherit`. Anonymous mode requires a clean environment without `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY`, and fails before installation if either is inherited. The endpoint scheme selects encrypted (`https`) or unencrypted (`http`) transport. Direct `setup-rust` callers may establish credentials first and grant the required permissions themselves. Reusable workflows only use credentials already present on the runner and do not acquire OIDC credentials. Pulse Actions does not request identity permissions or accept executable commands.
 
+`rust-native-build.yml` callers can set `macos-x64: false` when they support Apple Silicon macOS only. The default remains `true` for existing callers.
+
 See [the public contract](docs/contract.md), [v1 migration guide](docs/migrating-to-v1.md), [design](docs/design.md), and [release policy](docs/releases.md).

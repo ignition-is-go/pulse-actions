@@ -27,6 +27,10 @@ on:
       macos-compiler-cache:
         type: boolean
         default: true
+      macos-x64:
+        description: Build the Intel macOS target.
+        type: boolean
+        default: true
       windows-compiler-cache:
         type: boolean
         default: true
@@ -79,12 +83,14 @@ jobs:
           - name: macOS x64
             runner-json: ${{ inputs.macos-runner-json }}
             target: x86_64-apple-darwin
+            enabled: ${{ inputs.macos-x64 }}
             compiler-cache: ${{ inputs.macos-compiler-cache }}
             target-cache: true
             disabled-compiler-cache-auth: static
           - name: macOS arm64
             runner-json: ${{ inputs.macos-runner-json }}
             target: aarch64-apple-darwin
+            enabled: true
             compiler-cache: ${{ inputs.macos-compiler-cache }}
             target-cache: true
             disabled-compiler-cache-auth: static
@@ -94,6 +100,8 @@ jobs:
             compiler-cache: ${{ inputs.windows-compiler-cache }}
             target-cache: ${{ inputs.windows-target-cache }}
             disabled-compiler-cache-auth: static
+        exclude:
+          - enabled: false
     runs-on: ${{ fromJSON(matrix.runner-json) }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     steps:
