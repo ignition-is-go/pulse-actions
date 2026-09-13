@@ -77,6 +77,7 @@ jobs:
           - name: Linux x64
             runner-json: ${{ inputs.linux-runner-json }}
             target: x86_64-unknown-linux-gnu
+            enabled: true
             compiler-cache: ${{ inputs.linux-compiler-cache }}
             target-cache: true
             disabled-compiler-cache-auth: static
@@ -97,6 +98,7 @@ jobs:
           - name: Windows x64
             runner-json: ${{ inputs.windows-runner-json }}
             target: x86_64-pc-windows-msvc
+            enabled: true
             compiler-cache: ${{ inputs.windows-compiler-cache }}
             target-cache: ${{ inputs.windows-target-cache }}
             disabled-compiler-cache-auth: static
