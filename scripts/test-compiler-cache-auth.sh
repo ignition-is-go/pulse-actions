@@ -83,15 +83,15 @@ for workflow in \
   grep -Fq "compiler-cache-session-token: \${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SESSION_TOKEN || '' }}" "$workflow"
 done
 
-grep -Fq "compiler-cache-access-key: \${{ matrix.compiler-cache && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_ACCESS_KEY || '' }}" \
+grep -Fq "compiler-cache-access-key: \${{ env.COMPILER_CACHE_ENABLED == 'true' && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_ACCESS_KEY || '' }}" \
   .github/workflows/rust-native-build.yml
-grep -Fq "compiler-cache-secret-key: \${{ matrix.compiler-cache && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SECRET_KEY || '' }}" \
+grep -Fq "compiler-cache-secret-key: \${{ env.COMPILER_CACHE_ENABLED == 'true' && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SECRET_KEY || '' }}" \
   .github/workflows/rust-native-build.yml
-grep -Fq "compiler-cache-session-token: \${{ matrix.compiler-cache && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SESSION_TOKEN || '' }}" \
+grep -Fq "compiler-cache-session-token: \${{ env.COMPILER_CACHE_ENABLED == 'true' && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SESSION_TOKEN || '' }}" \
   .github/workflows/rust-native-build.yml
 grep -Fq "AUTH: \${{ inputs.compiler-cache-auth }}" .github/workflows/rust-native-build.yml
 grep -Fq 'static|ambient|anonymous)' .github/workflows/rust-native-build.yml
-grep -Fq 'matrix.compiler-cache == false && matrix.disabled-compiler-cache-auth || inputs.compiler-cache-auth' \
+grep -Fq "env.COMPILER_CACHE_ENABLED == 'true' && inputs.compiler-cache-auth || 'static'" \
   .github/workflows/rust-native-build.yml
 
 readonly common_env=$'RUSTC_WRAPPER=sccache\nSCCACHE_BUCKET=cache\nSCCACHE_ENDPOINT=https://cache.example.invalid\nSCCACHE_REGION=auto\nSCCACHE_S3_USE_SSL=true\nSCCACHE_S3_KEY_PREFIX=rust/v1\nSCCACHE_BASEDIRS=/workspace'

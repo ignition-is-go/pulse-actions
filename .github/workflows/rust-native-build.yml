@@ -69,43 +69,15 @@ env:
 
 jobs:
   build:
-    name: ${{ matrix.name }}
+    name: ${{ matrix.target }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: Linux x64
-            runner-json: ${{ inputs.linux-runner-json }}
-            target: x86_64-unknown-linux-gnu
-            enabled: true
-            compiler-cache: ${{ inputs.linux-compiler-cache }}
-            target-cache: true
-            disabled-compiler-cache-auth: static
-          - name: macOS x64
-            runner-json: ${{ inputs.macos-runner-json }}
-            target: x86_64-apple-darwin
-            enabled: ${{ inputs.macos-x64 }}
-            compiler-cache: ${{ inputs.macos-compiler-cache }}
-            target-cache: true
-            disabled-compiler-cache-auth: static
-          - name: macOS arm64
-            runner-json: ${{ inputs.macos-runner-json }}
-            target: aarch64-apple-darwin
-            enabled: true
-            compiler-cache: ${{ inputs.macos-compiler-cache }}
-            target-cache: true
-            disabled-compiler-cache-auth: static
-          - name: Windows x64
-            runner-json: ${{ inputs.windows-runner-json }}
-            target: x86_64-pc-windows-msvc
-            enabled: true
-            compiler-cache: ${{ inputs.windows-compiler-cache }}
-            target-cache: ${{ inputs.windows-target-cache }}
-            disabled-compiler-cache-auth: static
-        exclude:
-          - enabled: false
-    runs-on: ${{ fromJSON(matrix.runner-json) }}
+        target: ${{ fromJSON(inputs.macos-x64 && '["x86_64-unknown-linux-gnu","x86_64-apple-darwin","aarch64-apple-darwin","x86_64-pc-windows-msvc"]' || '["x86_64-unknown-linux-gnu","aarch64-apple-darwin","x86_64-pc-windows-msvc"]') }}
+    runs-on: ${{ fromJSON(matrix.target == 'x86_64-unknown-linux-gnu' && inputs.linux-runner-json || matrix.target == 'x86_64-pc-windows-msvc' && inputs.windows-runner-json || inputs.macos-runner-json) }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
+    env:
+      COMPILER_CACHE_ENABLED: ${{ matrix.target == 'x86_64-unknown-linux-gnu' && inputs.linux-compiler-cache || matrix.target == 'x86_64-pc-windows-msvc' && inputs.windows-compiler-cache || matrix.target != 'x86_64-unknown-linux-gnu' && matrix.target != 'x86_64-pc-windows-msvc' && inputs.macos-compiler-cache }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
@@ -130,15 +102,15 @@ jobs:
           toolchain: ${{ inputs.toolchain }}
           targets: ${{ matrix.target }}
           cache-shared-key: native-${{ matrix.target }}-v1
-          cache-targets: ${{ matrix.target-cache }}
+          cache-targets: ${{ matrix.target != 'x86_64-pc-windows-msvc' || inputs.windows-target-cache }}
           linux-dependencies: openssl
           windows-sparse-index: ${{ runner.os == 'Windows' }}
-          compiler-cache-auth: ${{ matrix.compiler-cache == false && matrix.disabled-compiler-cache-auth || inputs.compiler-cache-auth }}
-          compiler-cache-endpoint: ${{ matrix.compiler-cache && (inputs.compiler-cache-endpoint || secrets.CI_CACHE_ENDPOINT) || '' }}
-          compiler-cache-bucket: ${{ matrix.compiler-cache && (inputs.compiler-cache-bucket || secrets.CI_CACHE_BUCKET) || '' }}
-          compiler-cache-access-key: ${{ matrix.compiler-cache && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_ACCESS_KEY || '' }}
-          compiler-cache-secret-key: ${{ matrix.compiler-cache && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SECRET_KEY || '' }}
-          compiler-cache-session-token: ${{ matrix.compiler-cache && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SESSION_TOKEN || '' }}
+          compiler-cache-auth: ${{ env.COMPILER_CACHE_ENABLED == 'true' && inputs.compiler-cache-auth || 'static' }}
+          compiler-cache-endpoint: ${{ env.COMPILER_CACHE_ENABLED == 'true' && (inputs.compiler-cache-endpoint || secrets.CI_CACHE_ENDPOINT) || '' }}
+          compiler-cache-bucket: ${{ env.COMPILER_CACHE_ENABLED == 'true' && (inputs.compiler-cache-bucket || secrets.CI_CACHE_BUCKET) || '' }}
+          compiler-cache-access-key: ${{ env.COMPILER_CACHE_ENABLED == 'true' && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_ACCESS_KEY || '' }}
+          compiler-cache-secret-key: ${{ env.COMPILER_CACHE_ENABLED == 'true' && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SECRET_KEY || '' }}
+          compiler-cache-session-token: ${{ env.COMPILER_CACHE_ENABLED == 'true' && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SESSION_TOKEN || '' }}
       - name: Build on Linux or macOS
         if: runner.os != 'Windows'
         env:
