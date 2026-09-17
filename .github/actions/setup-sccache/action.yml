@@ -140,9 +140,12 @@ runs:
       run: | # zizmor: ignore[github-env] inputs and GITHUB_WORKSPACE reject CR/LF; remaining values are constants or closed enums
         use_ssl=$("$GITHUB_ACTION_PATH/resolve-endpoint.sh" "$ENDPOINT")
         USE_SSL=$use_ssl bash "$GITHUB_ACTION_PATH/render-env.sh" "$AUTH" >> "$GITHUB_ENV"
+        if [[ "$RUNNER_OS" == macOS ]]; then
+          echo 'SCCACHE_NO_DAEMON=1' >> "$GITHUB_ENV"
+        fi
 
     - name: Start compiler cache and reset job statistics
-      if: steps.mode.outputs.enabled == 'true'
+      if: steps.mode.outputs.enabled == 'true' && runner.os != 'macOS'
       shell: bash
       env:
         SCCACHE_BUCKET: ${{ inputs.bucket }}

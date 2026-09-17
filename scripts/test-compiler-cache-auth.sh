@@ -94,6 +94,10 @@ grep -Fq 'static|ambient|anonymous)' .github/workflows/rust-native-build.yml
 grep -Fq "env.COMPILER_CACHE_ENABLED == 'true' && inputs.compiler-cache-auth || 'static'" \
   .github/workflows/rust-native-build.yml
 
+grep -Fq 'SCCACHE_NO_DAEMON=1' .github/actions/setup-sccache/action.yml
+grep -Fq "steps.mode.outputs.enabled == 'true' && runner.os != 'macOS'" \
+  .github/actions/setup-sccache/action.yml
+
 readonly common_env=$'RUSTC_WRAPPER=sccache\nSCCACHE_BUCKET=cache\nSCCACHE_ENDPOINT=https://cache.example.invalid\nSCCACHE_REGION=auto\nSCCACHE_S3_USE_SSL=true\nSCCACHE_S3_KEY_PREFIX=rust/v1\nSCCACHE_BASEDIRS=/workspace'
 
 render() {

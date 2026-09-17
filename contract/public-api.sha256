@@ -1,4 +1,4 @@
-bb89b67ab117112180cfbdc0658c06951375909331532791c0e8065605275f13  .github/actions/setup-sccache/action.yml
+252259f86a7b0b8d4bec167e08a0101978fdd1540ec212d6f37f0c2b4dd93ba7  .github/actions/setup-sccache/action.yml
 43b5d09255e25cda3c0f7f8ae89b39e9dbaba237e290ef355777f201d7011f9b  .github/actions/setup-sccache/render-env.sh
 18a0a9e365b3c4b564e22e0b9f4c738b8c8f7a48669c2e8a61d92142618067a5  .github/actions/setup-sccache/resolve-auth.sh
 ffb4360888411f469872402e92f0b8d771b5fce9076cdd4f8379a575372b9dc7  .github/actions/setup-sccache/resolve-endpoint.sh
