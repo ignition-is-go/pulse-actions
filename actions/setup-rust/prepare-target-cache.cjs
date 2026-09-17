@@ -61,9 +61,9 @@ function prepare(env, run = (program, args, cwd) =>
     || /^CARGO_(PROFILE_|TARGET_)/.test(name)).sort(([a], [b]) => a.localeCompare(b));
   const identity = hash([env.RUNNER_OS, env.RUNNER_ARCH, compiler, uniquePaths.map(p => path.relative(root, p)),
     env.CACHE_SHARED_KEY, env.CACHE_ENV_HASH, env.CACHE_LOCK_HASH, buildEnv]);
-  const prefix = `rust-target/v1/${env.GITHUB_REPOSITORY}/${identity}`;
-  const branchPrefix = `${prefix}/${hash(env.GITHUB_REF)}/`;
-  const defaultPrefix = `${prefix}/${hash(`refs/heads/${env.CACHE_DEFAULT_BRANCH}`)}/`;
+  const prefix = `rust-target-v1-${hash(env.GITHUB_REPOSITORY)}-${identity}`;
+  const branchPrefix = `${prefix}-${hash(env.GITHUB_REF)}-`;
+  const defaultPrefix = `${prefix}-${hash(`refs/heads/${env.CACHE_DEFAULT_BRANCH}`)}-`;
   return {
     endpoint: endpoint.hostname,
     port: endpoint.port || (endpoint.protocol === 'https:' ? '443' : '80'),

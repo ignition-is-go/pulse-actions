@@ -1,5 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const path = require('node:path');
+const root = path.resolve('/work/repo');
 const { prepare } = require('../actions/setup-rust/prepare-target-cache.cjs');
 
 const env = {
@@ -7,15 +9,15 @@ const env = {
   CACHE_BUCKET: 'cache', CACHE_ACCESS_KEY: 'test', CACHE_SECRET_KEY: 'test',
   CACHE_WORKSPACES: '.', CACHE_SHARED_KEY: 'v1', CACHE_LOCK_HASH: 'lock',
   CACHE_ENV_HASH: 'manifests', CACHE_DEFAULT_BRANCH: 'main',
-  GITHUB_WORKSPACE: '/work/repo', GITHUB_REPOSITORY: 'example/repo',
+  GITHUB_WORKSPACE: root, GITHUB_REPOSITORY: 'example/repo',
   GITHUB_REF: 'refs/heads/main', RUNNER_OS: 'Linux', RUNNER_ARCH: 'X64',
 };
-const run = (program) => ({cargo: '{"target_directory":"/work/repo/custom-target"}', rustc: 'rustc 1.97.1', git: 'abc123'})[program];
+const run = (program) => ({cargo: JSON.stringify({target_directory: path.join(root, 'custom-target')}), rustc: 'rustc 1.97.1', git: 'abc123'})[program];
 const config = (overrides = {}) => prepare({...env, ...overrides}, run);
 
 test('resolves custom Cargo target and endpoint transport', () => {
   const result = config();
-  assert.equal(result.paths, '/work/repo/custom-target');
+  assert.equal(result.paths, path.join(root, 'custom-target'));
   assert.equal(result.endpoint, 'cache.example.invalid');
   assert.equal(result.port, '9000');
   assert.equal(result.insecure, 'true');
@@ -24,7 +26,7 @@ test('resolves custom Cargo target and endpoint transport', () => {
 });
 test('supports explicit workspace mappings and deduplicates targets', () => {
   assert.equal(config({CACHE_WORKSPACES: '. -> target\n. -> target\nsub -> output'}).paths,
-    '/work/repo/target\n/work/repo/sub/output');
+    [path.join(root, 'target'), path.join(root, 'sub/output')].join('\n'));
 });
 test('keys separate repositories, branches, toolchains, dependencies and build environments', () => {
   const base = config();
@@ -59,6 +61,13 @@ test('rejects empty mappings, glob paths and target directories containing sourc
 });
 test('includes a separate Cargo build directory', () => {
   const result = prepare(env, (p, ...args) => p === 'cargo' ?
-    '{"target_directory":"/work/repo/target","build_directory":"/work/repo/build"}' : run(p, ...args));
-  assert.equal(result.paths, '/work/repo/target\n/work/repo/build');
+    JSON.stringify({target_directory: path.join(root, 'target'), build_directory: path.join(root, 'build')}) : run(p, ...args));
+  assert.equal(result.paths, [path.join(root, 'target'), path.join(root, 'build')].join('\n'));
+});
+
+test('provider object names preserve lookup prefixes on Windows and Unix', () => {
+  const { key } = config();
+  for (const platformPath of [path.posix, path.win32]) {
+    assert.ok(platformPath.join(key, 'cache.tzst').startsWith(key + platformPath.sep));
+  }
 });

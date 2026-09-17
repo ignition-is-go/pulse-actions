@@ -49,15 +49,21 @@ jobs:
       - run: ./scripts/test-workflow-validation.sh
 
   s3-target-cache:
-    name: S3 target cache round trip
-    runs-on: ubuntu-24.04
+    name: S3 target cache (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
       - run: node --test scripts/test-target-cache.cjs
-      - name: Install S3 test server
-        run: python -m pip install 'moto[server]==5.2.3' 'PyYAML==6.0.3'
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          enable-cache: false
       - name: Build, save, delete, restore and test offline
-        run: python scripts/test-s3-target-cache.py
+        run: uv run scripts/test-s3-target-cache.py

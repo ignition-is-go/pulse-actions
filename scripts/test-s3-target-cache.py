@@ -5,6 +5,7 @@
 import hashlib
 import logging
 import os
+import platform
 from pathlib import Path
 import re
 import shutil
@@ -54,7 +55,8 @@ def exercise(base):
         "GITHUB_WORKSPACE": str(workspace), "GITHUB_REPOSITORY": "example/repo",
         "GITHUB_REF": "refs/heads/main", "GITHUB_OUTPUT": str(base / "output"),
         "GITHUB_STATE": str(base / "state"), "RUNNER_TEMP": str(base),
-        "RUNNER_OS": "Linux", "RUNNER_ARCH": "X64",
+        "RUNNER_OS": {"Darwin": "macOS"}.get(platform.system(), platform.system()),
+        "RUNNER_ARCH": platform.machine(),
         "CACHE_WORKSPACES": ".", "CACHE_SHARED_KEY": "round-trip",
         "CACHE_DEFAULT_BRANCH": "main", "CACHE_AUTH": "static", "CACHE_BUCKET": "cache",
         "CACHE_ACCESS_KEY": "testing", "CACHE_SECRET_KEY": "testing",
@@ -106,7 +108,7 @@ def exercise(base):
         log = run(save, workspace, env)
         assert "Cache saved to s3 successfully" in log, log
         objects = client.list_objects_v2(Bucket="cache")["Contents"]
-        assert len(objects) == 1 and objects[0]["Key"].startswith("rust-target/v1/example/repo/")
+        assert len(objects) == 1 and objects[0]["Key"].startswith("rust-target-v1-")
         for target in targets:
             shutil.rmtree(target)
         log = run(restore, workspace, env)
