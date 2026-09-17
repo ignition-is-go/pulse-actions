@@ -47,3 +47,17 @@ jobs:
       - run: ./scripts/check-public-contract.sh
       - run: ./scripts/test-action-pin-check.sh
       - run: ./scripts/test-workflow-validation.sh
+
+  s3-target-cache:
+    name: S3 target cache round trip
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - run: node --test scripts/test-target-cache.cjs
+      - name: Install S3 test server
+        run: python -m pip install 'moto[server]==5.2.3' 'PyYAML==6.0.3'
+      - name: Build, save, delete, restore and test offline
+        run: python scripts/test-s3-target-cache.py

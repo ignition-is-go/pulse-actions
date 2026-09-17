@@ -28,3 +28,11 @@ Reusable workflows accept endpoint and bucket as non-secret inputs. A nonempty i
 Public Pulse Actions entry points may use exact stable semantic-version tags. The validator derives those entry points from `contract/public-api.txt` and rejects moving tags, prereleases, tagged private paths, and tags on other repositories. Third-party actions use full commit SHAs and container actions use image digests. Full commit SHAs remain valid for every remote action.
 
 Workflow validation checks all tracked workflow and `action.yml` files. It validates reference syntax but cannot prove that a tag exists or is protected. The release procedure verifies the annotated tag and GitHub tag ruleset before consumers adopt it. The contract checksum includes every public entry point and every tracked internal action file. Public-surface checks reject private network addresses, private hostnames, runner identities, and estate-specific runner-label conventions.
+
+## Target-cache backend
+
+`cache-target-backend` accepts `github` or `s3` and defaults to `github`. It is available on `setup-rust` and all three Rust reusable workflows. `cache-targets` continues to control whether build directories are cached. S3 requires a complete static compiler-cache configuration; ambient and anonymous modes are not supported for archives.
+
+S3 archives contain Cargo's target and build directories. Explicit `cache-workspaces` mappings select the named directory instead. Keys isolate repositories, branches, compiler versions, platforms, paths, dependency and build settings, and source revisions. Restores may use an older entry in the same branch or the default branch. Pull request jobs do not upload archives. No S3 failure falls back to GitHub storage. Cache transport failures remain nonfatal and are reported in the provider's logs.
+
+With S3 enabled, `rust-cache-hit` and `offline` require both the target archive and Cargo registry cache to match their primary keys. `offline` also requires the optional sparse-index cache to match. These outputs report cache state, not proof that an arbitrary subsequent Cargo command can run offline. Registry and sparse-index storage remain on GitHub. Existing GitHub-backend defaults and behavior are unchanged.
