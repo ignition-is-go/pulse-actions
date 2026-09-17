@@ -72,8 +72,10 @@ def exercise(base):
     step = next(step for step in action["runs"]["steps"] if step.get("id") == "s3-target-cache")
     repo, ref = step["uses"].split("@")
     provider = base / "provider"
-    run(["git", "clone", "-q", f"https://github.com/{repo}.git", str(provider)], base, env)
-    run(["git", "checkout", "-q", ref], provider, env)
+    provider.mkdir()
+    run(["git", "init", "-q"], provider, env)
+    run(["git", "fetch", "-q", "--depth=1", f"https://github.com/{repo}.git", ref], provider, env)
+    run(["git", "checkout", "-q", "FETCH_HEAD"], provider, env)
     server = ThreadedMotoServer(ip_address="127.0.0.1", port=0, verbose=False)
     server.start()
     try:
@@ -130,4 +132,4 @@ def exercise(base):
 
 
 with tempfile.TemporaryDirectory(prefix="pulse-s3-test-") as directory:
-    exercise(Path(directory))
+    exercise(Path(directory).resolve())
