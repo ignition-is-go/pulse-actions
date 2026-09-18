@@ -23,7 +23,7 @@ fi
 
 {
   cat "$actual_file"
-  git ls-files --cached --others --exclude-standard '.github/actions/**'
+  git ls-files --cached --others --exclude-standard '.github/actions/**' 'actions/**'
 } | sort -u > "$required_file"
 awk '{print $2}' contract/public-api.sha256 | sort -u > "$manifest_file"
 if ! diff -u "$required_file" "$manifest_file"; then

@@ -12,6 +12,10 @@ on:
       timeout-minutes:
         type: number
         default: 30
+      cache-target-backend:
+        description: Target-directory cache backend (github or s3). S3 requires static compiler-cache credentials.
+        type: string
+        default: github
       compiler-cache-auth:
         description: Compiler-cache authentication mode (static, ambient, or anonymous).
         type: string
@@ -55,6 +59,7 @@ jobs:
       - uses: $/actions/setup-rust
         with:
           toolchain: ${{ inputs.toolchain }}
+          cache-target-backend: ${{ inputs.cache-target-backend }}
           components: rustfmt,clippy
           cache-shared-key: rust-quality-v1
           compiler-cache-auth: ${{ inputs.compiler-cache-auth }}
