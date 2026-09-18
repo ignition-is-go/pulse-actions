@@ -107,27 +107,38 @@ def exercise(base):
         artifacts = {str(p.relative_to(workspace)): hashlib.sha256(p.read_bytes()).hexdigest()
                      for target in targets for p in target.rglob("*") if p.is_file()}
         assert artifacts, "Rust build produced no artifacts"
-        log = run(save, workspace, env)
+        primary_key = env["INPUT_KEY"]
+        env["INPUT_KEY"] = primary_key + "-partial-1-1"
+        log = run(["node", str(provider / "dist/saveOnly/index.js")], workspace, env)
         assert "Cache saved to s3 successfully" in log, log
         objects = client.list_objects_v2(Bucket="cache")["Contents"]
         namespace = "rust-target-v1-" if platform.system() == "Windows" else "rust/v1/targets/"
         assert len(objects) == 1 and objects[0]["Key"].startswith(namespace)
         for target in targets:
             shutil.rmtree(target)
+        env["INPUT_KEY"] = primary_key
         log = run(restore, workspace, env)
-        assert command_file(base / "output")["cache-hit"] == "true", log
+        assert command_file(base / "output")["cache-hit"] == "false", log
+        assert "Cache restored from s3 successfully" in log, log
         for relative, digest in artifacts.items():
             assert hashlib.sha256((workspace / relative).read_bytes()).hexdigest() == digest, relative
         run(["cargo", "test", "--offline", "--locked"], workspace, env)
+        env.update({f"STATE_{k}": v for k, v in command_file(base / "state").items()})
+        log = run(save, workspace, env)
+        assert "Cache saved to s3 successfully" in log, log
+        assert len(client.list_objects_v2(Bucket="cache")["Contents"]) == 2
+        log = run(restore, workspace, env)
+        assert command_file(base / "output")["cache-hit"] == "true", log
         env["INPUT_KEY"] += "-next-commit"
         log = run(restore, workspace, env)
         assert command_file(base / "output")["cache-hit"] == "false", log
         assert "Cache restored from s3 successfully" in log, log
         env["INPUT_RESTORE-ONLY"] = "true"
         run(save, workspace, env)
-        assert len(client.list_objects_v2(Bucket="cache")["Contents"]) == 1
+        assert len(client.list_objects_v2(Bucket="cache")["Contents"]) == 2
         print(f"PASS: restored {len(artifacts)} Rust build files byte-for-byte from S3; offline tests passed.")
         print("PASS: prefix restore works; read-only mode does not upload; GitHub fallback disabled.")
+        print("PASS: explicit partial save restores through fallback and leaves the primary key available.")
     finally:
         server.stop()
 
