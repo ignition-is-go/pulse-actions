@@ -61,6 +61,27 @@ inputs:
     default: ""
 
 outputs:
+  target-cache-key:
+    description: S3 target-cache key for an explicit save step. Empty for other backends.
+    value: ${{ steps.s3-target-config.outputs.key }}
+  target-cache-paths:
+    description: Newline-separated target directories for an explicit S3 save.
+    value: ${{ steps.s3-target-config.outputs.paths }}
+  target-cache-endpoint:
+    description: S3 endpoint hostname, without credentials or scheme.
+    value: ${{ steps.s3-target-config.outputs.endpoint }}
+  target-cache-port:
+    description: S3 endpoint port.
+    value: ${{ steps.s3-target-config.outputs.port }}
+  target-cache-insecure:
+    description: Whether the S3 endpoint uses HTTP.
+    value: ${{ steps.s3-target-config.outputs.insecure }}
+  target-cache-save-allowed:
+    description: Whether this event may save an S3 target cache. Fork PRs and pull_request_target are read-only.
+    value: ${{ steps.s3-target-config.outputs.restore-only == 'false' }}
+  target-cache-hit:
+    description: Whether the S3 target cache matched its primary key.
+    value: ${{ steps.s3-target-cache.outputs.cache-hit }}
   rust-cache-hit:
     description: Whether the Rust cache matched its primary key.
     value: ${{ inputs.cache-targets == 'true' && inputs.cache-target-backend == 'github' && steps.rust-cache.outputs.cache-hit || (inputs.cache-targets != 'true' || steps.s3-target-cache.outputs.cache-hit == 'true') && steps.cargo-registry-cache.outputs.cache-hit }}
