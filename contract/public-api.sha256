@@ -1,7 +1,8 @@
-bb89b67ab117112180cfbdc0658c06951375909331532791c0e8065605275f13  .github/actions/setup-sccache/action.yml
+6bfbde728c6c8a73eae3aa96f1091f6fa34265a9b2e1d236b7bf22f05613415a  .github/actions/setup-sccache/action.yml
 43b5d09255e25cda3c0f7f8ae89b39e9dbaba237e290ef355777f201d7011f9b  .github/actions/setup-sccache/render-env.sh
 18a0a9e365b3c4b564e22e0b9f4c738b8c8f7a48669c2e8a61d92142618067a5  .github/actions/setup-sccache/resolve-auth.sh
 ffb4360888411f469872402e92f0b8d771b5fce9076cdd4f8379a575372b9dc7  .github/actions/setup-sccache/resolve-endpoint.sh
+8b89a6f97f5e7c58b4087150561e221e7f01f1eabb3e0cb1c686469f71bb19a8  .github/actions/setup-sccache/start-server.sh
 657befafbfa300dd1f8ef98d6aeb0825b8b09d211212ef62a1d97f108de96b12  .github/actions/setup-sccache/validate-single-line-env.sh
 9bde93829a51a3efbc44bedc9881b65b8f3e801f70192882e4ef0f706c2dfa9b  .github/actions/validate-workflows/action.yml
 e579b8c18af0b2b3e3b38d8b6ccbc00ec0b608edf59a4281db6f0fac29f9fcb3  .github/actions/validate-workflows/check-action-pins.sh
