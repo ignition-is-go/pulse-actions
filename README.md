@@ -97,7 +97,9 @@ compiled outputs when a check fails, give `setup-rust` the ID `rust` and add the
 following step after the checks. Failed checks still fail the job; this step
 only saves build intermediates. Cargo still validates restored fingerprints and
 the next run still executes its checks. Fork PRs and `pull_request_target` cannot
-save, and an exact cache hit is not uploaded again.
+save, and an exact cache hit is not uploaded again. Partial archives use a
+separate key so they cannot occupy the successful run's immutable cache key.
+Later runs can restore them through the existing branch-prefix fallback.
 
 ```yaml
 - name: Save target cache after failed checks
@@ -113,7 +115,7 @@ save, and an exact cache hit is not uploaded again.
     accessKey: ${{ secrets.CI_CACHE_ACCESS_KEY }}
     secretKey: ${{ secrets.CI_CACHE_SECRET_KEY }}
     path: ${{ steps.rust.outputs.target-cache-paths }}
-    key: ${{ steps.rust.outputs.target-cache-key }}
+    key: ${{ steps.rust.outputs.target-cache-key }}-partial-${{ github.run_id }}-${{ github.run_attempt }}
     use-fallback: 'false'
 ```
 
