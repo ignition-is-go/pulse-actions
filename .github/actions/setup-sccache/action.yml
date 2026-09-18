@@ -24,7 +24,7 @@ inputs:
 outputs:
   enabled:
     description: Whether remote compiler caching was enabled.
-    value: ${{ steps.mode.outputs.enabled }}
+    value: ${{ steps.start.outputs.enabled || 'false' }}
 
 runs:
   using: composite
@@ -142,6 +142,7 @@ runs:
         USE_SSL=$use_ssl bash "$GITHUB_ACTION_PATH/render-env.sh" "$AUTH" >> "$GITHUB_ENV"
 
     - name: Start compiler cache and reset job statistics
+      id: start
       if: steps.mode.outputs.enabled == 'true'
       shell: bash
       env:
@@ -153,5 +154,4 @@ runs:
       run: |
         SCCACHE_S3_USE_SSL=$("$GITHUB_ACTION_PATH/resolve-endpoint.sh" "$SCCACHE_ENDPOINT")
         export SCCACHE_S3_USE_SSL
-        sccache --start-server
-        sccache --zero-stats
+        bash "$GITHUB_ACTION_PATH/start-server.sh"

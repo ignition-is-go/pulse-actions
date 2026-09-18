@@ -4,6 +4,7 @@ set -euo pipefail
 readonly resolver=.github/actions/setup-sccache/resolve-auth.sh
 readonly validator=.github/actions/setup-sccache/validate-single-line-env.sh
 readonly renderer=.github/actions/setup-sccache/render-env.sh
+readonly starter=.github/actions/setup-sccache/start-server.sh
 
 assert_resolves() {
   local expected=$1
@@ -143,6 +144,34 @@ if AWS_ACCESS_KEY_ID=inherited ENDPOINT=https://cache.example.invalid BUCKET=cac
   echo 'Anonymous mode accepted inherited static AWS credentials.' >&2
   exit 1
 fi
+
+fake_bin=$(mktemp -d)
+trap 'rm -f "$validation_output"; rm -rf "$fake_bin"' EXIT
+cat >"$fake_bin/sccache" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$1" >>"$SCCACHE_CALLS"
+[[ "$1" != --start-server || "${SCCACHE_START_RESULT:-success}" == success ]]
+EOF
+chmod +x "$fake_bin/sccache"
+
+calls=$(mktemp)
+output=$(mktemp)
+environment=$(mktemp)
+PATH="$fake_bin:$PATH" SCCACHE_CALLS="$calls" GITHUB_OUTPUT="$output" \
+  GITHUB_ENV="$environment" bash "$starter"
+grep -Fxq 'enabled=true' "$output"
+[[ "$(cat "$calls")" == $'--start-server\n--zero-stats' ]]
+
+: >"$calls"
+: >"$output"
+: >"$environment"
+PATH="$fake_bin:$PATH" SCCACHE_CALLS="$calls" SCCACHE_START_RESULT=failure \
+  GITHUB_OUTPUT="$output" GITHUB_ENV="$environment" bash "$starter"
+grep -Fxq 'enabled=false' "$output"
+grep -Fxq 'RUSTC_WRAPPER=' "$environment"
+grep -Fxq 'AWS_SECRET_ACCESS_KEY=' "$environment"
+[[ "$(cat "$calls")" == $'--start-server\n--stop-server' ]]
+rm -f "$calls" "$output" "$environment"
 
 for field in AUTH ENDPOINT BUCKET ACCESS_KEY SECRET_KEY SESSION_TOKEN USE_SSL GITHUB_WORKSPACE; do
   rejected=$'not-printed\r\ninjected'
