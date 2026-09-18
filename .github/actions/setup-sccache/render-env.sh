@@ -28,7 +28,8 @@ printf '%s\n' \
   'SCCACHE_REGION=auto' \
   "SCCACHE_S3_USE_SSL=${USE_SSL:-}" \
   'SCCACHE_S3_KEY_PREFIX=rust/v1' \
-  "SCCACHE_BASEDIRS=${GITHUB_WORKSPACE:-}"
+  "SCCACHE_BASEDIRS=${GITHUB_WORKSPACE:-}" \
+  'SCCACHE_IGNORE_SERVER_IO_ERROR=1'
 
 case "$auth" in
   static)

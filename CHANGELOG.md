@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased (v1.1.0)
+## Unreleased
+
+- Fall back to direct compilation when the local sccache server or remote backend becomes unavailable.
+- Let callers preserve conditional GitHub Cargo cache writes during migration.
+
+## v1.1.0
 
 - Add explicit static, ambient, and anonymous compiler-cache authentication modes.
 - Support optional session tokens with static credentials.

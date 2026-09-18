@@ -18,6 +18,7 @@ sccache --stop-server >/dev/null 2>&1 || true
   echo 'SCCACHE_S3_USE_SSL='
   echo 'SCCACHE_S3_NO_CREDENTIALS='
   echo 'SCCACHE_S3_RW_MODE='
+  echo 'SCCACHE_IGNORE_SERVER_IO_ERROR='
   echo 'AWS_ACCESS_KEY_ID='
   echo 'AWS_SECRET_ACCESS_KEY='
   echo 'AWS_SESSION_TOKEN='
