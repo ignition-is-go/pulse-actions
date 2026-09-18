@@ -89,3 +89,36 @@ Large target archives use multipart uploads. The archive provider also requires 
 Cargo registry downloads and the optional Windows sparse-index cache still use GitHub storage. S3 archive failures appear in job logs and do not fall back to GitHub. Missing credentials fail setup when S3 target caching is explicitly selected. The default backend remains `github`.
 
 Run `node --test scripts/test-target-cache.cjs` for configuration tests. Run `uv run scripts/test-s3-target-cache.py` to build a Rust fixture and verify its archive round trip against a local S3 test server, without LAN credentials.
+
+### Preserve compilation after failed checks
+
+The automatic target-cache upload runs only when the job succeeds. To retain
+compiled outputs when a check fails, give `setup-rust` the ID `rust` and add the
+following step after the checks. Failed checks still fail the job; this step
+only saves build intermediates. Cargo still validates restored fingerprints and
+the next run still executes its checks. Fork PRs and `pull_request_target` cannot
+save, and an exact cache hit is not uploaded again. Partial archives use a
+separate key so they cannot occupy the successful run's immutable cache key.
+Later runs can restore them through the existing branch-prefix fallback.
+
+```yaml
+- name: Save target cache after failed checks
+  if: failure() && steps.rust.outputs.target-cache-save-allowed == 'true' && steps.rust.outputs.target-cache-hit != 'true'
+  continue-on-error: true
+  uses: tespkg/actions-cache/save@e07e2d4953dc8c020d447363e5064e36d04f3cf9 # v1
+  with:
+    endpoint: ${{ steps.rust.outputs.target-cache-endpoint }}
+    port: ${{ steps.rust.outputs.target-cache-port }}
+    insecure: ${{ steps.rust.outputs.target-cache-insecure }}
+    region: auto
+    bucket: ${{ secrets.CI_CACHE_BUCKET }}
+    accessKey: ${{ secrets.CI_CACHE_ACCESS_KEY }}
+    secretKey: ${{ secrets.CI_CACHE_SECRET_KEY }}
+    path: ${{ steps.rust.outputs.target-cache-paths }}
+    key: ${{ steps.rust.outputs.target-cache-key }}-partial-${{ github.run_id }}-${{ github.run_attempt }}
+    use-fallback: 'false'
+```
+
+If setup uses temporary credentials, also pass the same `sessionToken` to this
+step. Cache transport errors remain nonfatal. These outputs are empty or false
+when S3 target caching is disabled.
