@@ -151,6 +151,7 @@ runs:
         SCCACHE_REGION: auto
         SCCACHE_S3_KEY_PREFIX: rust/v1
         SCCACHE_BASEDIRS: ${{ github.workspace }}
+        SCCACHE_IGNORE_SERVER_IO_ERROR: "1"
       run: |
         SCCACHE_S3_USE_SSL=$("$GITHUB_ACTION_PATH/resolve-endpoint.sh" "$SCCACHE_ENDPOINT")
         export SCCACHE_S3_USE_SSL

@@ -23,6 +23,9 @@ inputs:
   cache-target-backend:
     description: Target-directory cache backend (github or s3). S3 reuses static compiler-cache credentials.
     default: github
+  cache-save-if:
+    description: Save the GitHub Cargo cache after the job.
+    default: "true"
   add-rust-environment-hash-key:
     description: Include the Rust compiler environment in the cache key.
     default: "true"
@@ -133,6 +136,7 @@ runs:
         add-rust-environment-hash-key: ${{ inputs.add-rust-environment-hash-key }}
         cache-targets: ${{ inputs.cache-targets }}
         cache-bin: false
+        save-if: ${{ inputs.cache-save-if }}
 
     - name: Resolve Cargo home on Unix
       if: (inputs.cache-targets != 'true' || inputs.cache-target-backend == 's3') && runner.os != 'Windows'
