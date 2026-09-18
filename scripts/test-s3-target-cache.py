@@ -110,7 +110,8 @@ def exercise(base):
         log = run(save, workspace, env)
         assert "Cache saved to s3 successfully" in log, log
         objects = client.list_objects_v2(Bucket="cache")["Contents"]
-        assert len(objects) == 1 and objects[0]["Key"].startswith("rust-target-v1-")
+        namespace = "rust-target-v1-" if platform.system() == "Windows" else "rust/v1/targets/"
+        assert len(objects) == 1 and objects[0]["Key"].startswith(namespace)
         for target in targets:
             shutil.rmtree(target)
         log = run(restore, workspace, env)

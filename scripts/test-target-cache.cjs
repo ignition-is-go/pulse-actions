@@ -85,8 +85,18 @@ test('includes a separate Cargo build directory', () => {
 });
 
 test('provider object names preserve lookup prefixes on Windows and Unix', () => {
-  const { key } = config();
-  for (const platformPath of [path.posix, path.win32]) {
+  for (const [os, platformPath, namespace] of [
+    ['Linux', path.posix, 'rust/v1/targets/'],
+    ['macOS', path.posix, 'rust/v1/targets/'],
+    ['Windows', path.win32, 'rust-target-v1-'],
+  ]) {
+    const result = config({RUNNER_OS: os});
+    const { key } = result;
+    assert.ok(key.startsWith(namespace));
+    assert.ok(result['restore-key'].split('\n').every(prefix => prefix.startsWith(namespace)));
     assert.ok(platformPath.join(key, 'cache.tzst').startsWith(key + platformPath.sep));
+    if (os !== 'Windows') {
+      assert.ok(platformPath.join(key, 'cache.tzst').startsWith('rust/v1/'));
+    }
   }
 });
