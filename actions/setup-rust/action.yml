@@ -163,6 +163,7 @@ runs:
       shell: bash
       env:
         CACHE_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        CACHE_PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
         CACHE_WORKSPACES: ${{ inputs.cache-workspaces }}
         CACHE_SHARED_KEY: ${{ inputs.cache-shared-key }}
         CACHE_ENV_HASH: ${{ inputs.add-rust-environment-hash-key == 'true' && hashFiles('**/Cargo.toml', '**/.cargo/config', '**/.cargo/config.toml', '**/rust-toolchain', '**/rust-toolchain.toml') || '' }}
@@ -194,7 +195,7 @@ runs:
         key: ${{ steps.s3-target-config.outputs.key }}
         restore-keys: ${{ steps.s3-target-config.outputs.restore-key }}
         use-fallback: 'false'
-        restore-only: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' }}
+        restore-only: ${{ steps.s3-target-config.outputs.restore-only }}
 
     - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
       if: runner.os == 'Windows' && inputs.windows-sparse-index == 'true'

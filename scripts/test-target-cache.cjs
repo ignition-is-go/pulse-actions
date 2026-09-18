@@ -54,6 +54,25 @@ test('rejects missing credentials, unsupported auth and malformed endpoints with
   assert.throws(() => config({CACHE_SECRET_KEY: 'sensitive\ninjected'}), error =>
     !error.message.includes('sensitive') && /single-line/.test(error.message));
 });
+
+test('same-repository PRs warm their own cache without exposing it to branch builds', () => {
+  const prEnv = {GITHUB_EVENT_NAME: 'pull_request', GITHUB_REF: 'refs/pull/3/merge',
+    GITHUB_BASE_REF: 'dev', CACHE_PR_HEAD_REPOSITORY: env.GITHUB_REPOSITORY};
+  const pr = config(prEnv);
+  assert.equal(pr['restore-only'], 'false');
+  const prefixes = pr['restore-key'].split('\n');
+  assert.equal(prefixes.length, 3);
+  assert.ok(pr.key.startsWith(prefixes[0]));
+  assert.equal(prefixes[1], config({GITHUB_REF: 'refs/heads/dev'})['restore-key'].split('\n')[0]);
+  assert.equal(prefixes[2], config()['restore-key']);
+  for (const ref of ['refs/heads/main', 'refs/heads/dev', 'refs/pull/4/merge']) {
+    assert.ok(!config({GITHUB_REF: ref})['restore-key'].includes(prefixes[0]));
+  }
+  assert.equal(config({...prEnv, CACHE_PR_HEAD_REPOSITORY: 'fork/repo'})['restore-only'], 'true');
+  assert.equal(config({...prEnv, CACHE_PR_HEAD_REPOSITORY: ''})['restore-only'], 'true');
+  assert.equal(config({...prEnv, GITHUB_EVENT_NAME: 'pull_request_target'})['restore-only'], 'true');
+  assert.equal(config({GITHUB_EVENT_NAME: 'push'})['restore-only'], 'false');
+});
 test('rejects empty mappings, glob paths and target directories containing source', () => {
   for (const mapping of [' \n ', '. ->', '. -> a -> b', '. -> .', '. -> ..', '. -> target/*']) {
     assert.throws(() => config({CACHE_WORKSPACES: mapping}));

@@ -64,13 +64,20 @@ function prepare(env, run = (program, args, cwd) =>
   const prefix = `rust-target-v1-${hash(env.GITHUB_REPOSITORY)}-${identity}`;
   const branchPrefix = `${prefix}-${hash(env.GITHUB_REF)}-`;
   const defaultPrefix = `${prefix}-${hash(`refs/heads/${env.CACHE_DEFAULT_BRANCH}`)}-`;
+  const restorePrefixes = [branchPrefix];
+  if (env.GITHUB_BASE_REF) restorePrefixes.push(`${prefix}-${hash(`refs/heads/${env.GITHUB_BASE_REF}`)}-`);
+  restorePrefixes.push(defaultPrefix);
+  const pullRequest = env.GITHUB_EVENT_NAME === 'pull_request';
+  const restoreOnly = env.GITHUB_EVENT_NAME === 'pull_request_target' ||
+    (pullRequest && env.CACHE_PR_HEAD_REPOSITORY !== env.GITHUB_REPOSITORY);
   return {
     endpoint: endpoint.hostname,
     port: endpoint.port || (endpoint.protocol === 'https:' ? '443' : '80'),
     insecure: String(endpoint.protocol === 'http:'),
     paths: uniquePaths.join('\n'),
     key: `${branchPrefix}${revision}`,
-    'restore-key': [...new Set([branchPrefix, defaultPrefix])].join('\n'),
+    'restore-key': [...new Set(restorePrefixes)].join('\n'),
+    'restore-only': String(restoreOnly),
   };
 }
 
