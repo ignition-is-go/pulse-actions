@@ -208,7 +208,7 @@ runs:
         path: ${{ inputs.windows-sparse-index-path }}
         key: ${{ inputs.windows-sparse-index-key || format('{0}-windows-sparse-index-{1}-{2}-v1', github.repository, inputs.toolchain, steps.lockfile.outputs.hash) }}
 
-    - uses: $/.github/actions/setup-sccache
+    - uses: ignition-is-go/pulse-actions/.github/actions/setup-sccache@eb26ec4d6f1d7023cddaea66d6e133fa8cbdd0da
       id: sccache-enabled
       with:
         auth: ${{ inputs.compiler-cache-auth }}
