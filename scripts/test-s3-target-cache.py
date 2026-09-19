@@ -91,8 +91,11 @@ def exercise(base):
         expressions.update({
             "inputs.compiler-cache-bucket": "cache", "inputs.compiler-cache-access-key": "testing",
             "inputs.compiler-cache-secret-key": "testing", "inputs.compiler-cache-session-token": "",
+            "inputs.cache-zstd-level": "3",
             "github.event_name == 'pull_request' || github.event_name == 'pull_request_target'": "false",
         })
+        for name, value in step.get("env", {}).items():
+            env[name] = re.sub(r"\$\{\{ (.*?) \}\}", lambda m: expressions[m[1]], str(value))
         for name, value in step["with"].items():
             env[f"INPUT_{name.upper()}"] = re.sub(r"\$\{\{ (.*?) \}\}", lambda m: expressions[m[1]], str(value))
         restore = ["node", str(provider / "dist/restore/index.js")]
