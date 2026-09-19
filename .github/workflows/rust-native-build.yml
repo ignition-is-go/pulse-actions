@@ -38,7 +38,7 @@ on:
         type: boolean
         default: true
       cache-target-backend:
-        description: Target-directory cache backend (github or s3). S3 requires static compiler-cache credentials.
+        description: Cargo cache backend (github or s3). S3 requires static compiler-cache credentials.
         type: string
         default: github
       cache-s3-transfer:
