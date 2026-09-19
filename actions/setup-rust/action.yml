@@ -23,6 +23,9 @@ inputs:
   cache-target-backend:
     description: Target-directory cache backend (github or s3). S3 reuses static compiler-cache credentials.
     default: github
+  cache-zstd-level:
+    description: Zstandard compression level for S3 target archives (1 through 19).
+    default: "3"
   cache-save-if:
     description: Save the GitHub Cargo cache after the job.
     default: "true"
@@ -86,6 +89,17 @@ runs:
           github|s3) ;;
           *) echo 'Target cache backend must be github or s3.' >&2; exit 1 ;;
         esac
+
+    - name: Validate S3 target cache compression level
+      if: inputs.cache-targets == 'true' && inputs.cache-target-backend == 's3'
+      shell: bash
+      env:
+        LEVEL: ${{ inputs.cache-zstd-level }}
+      run: |
+        if [[ ! "$LEVEL" =~ ^([1-9]|1[0-9])$ ]]; then
+          echo 'S3 target cache compression level must be an integer from 1 through 19.' >&2
+          exit 1
+        fi
 
     - name: Validate Linux dependency profile
       shell: bash
@@ -186,6 +200,7 @@ runs:
       uses: tespkg/actions-cache@e07e2d4953dc8c020d447363e5064e36d04f3cf9 # v1
       env:
         AWS_SESSION_TOKEN: ${{ inputs.compiler-cache-session-token }}
+        ZSTD_CLEVEL: ${{ inputs.cache-zstd-level }}
       with:
         endpoint: ${{ steps.s3-target-config.outputs.endpoint }}
         port: ${{ steps.s3-target-config.outputs.port }}
