@@ -145,5 +145,8 @@ def exercise(base, provider_id):
 
 with tempfile.TemporaryDirectory(prefix="pulse-s3-test-") as directory:
     root = Path(directory).resolve()
-    for provider_id in ["s3-target-cache-staged", "s3-target-cache-streaming"]:
+    providers = ["s3-target-cache-staged"]
+    if platform.system() == "Linux":
+        providers.append("s3-target-cache-streaming")
+    for provider_id in providers:
         exercise(root / provider_id, provider_id)
