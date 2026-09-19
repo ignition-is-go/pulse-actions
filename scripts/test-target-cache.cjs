@@ -36,6 +36,8 @@ test('uses separate lockfile-based paths and keys for the Cargo home cache', () 
   assert.notEqual(result['cargo-home-key'], result.key);
   assert.equal(config({GITHUB_REF: 'refs/heads/other'})['cargo-home-key'], result['cargo-home-key']);
   assert.notEqual(config({CACHE_LOCK_HASH: 'other-lock'})['cargo-home-key'], result['cargo-home-key']);
+  assert.equal(config({RUNNER_OS: 'Windows', CACHE_SPARSE_INDEX_ENABLED: 'true',
+    CACHE_SPARSE_INDEX_PATH: 'C:\\Rust\\cargo\\registry\\index'})['cargo-home-paths'].split('\n').length, 3);
 });
 test('keys separate repositories, branches, toolchains, dependencies and build environments', () => {
   const base = config();
