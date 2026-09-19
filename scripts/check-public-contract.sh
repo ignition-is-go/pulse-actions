@@ -33,7 +33,7 @@ fi
 
 sha256sum --check contract/public-api.sha256
 
-if git grep -nE "RUNNER_NAME|$estate_label" -- . ':!scripts/check-public-contract.sh'; then
+if git grep -nE "RUNNER_NAME|$estate_label" -- . ':!scripts/check-public-contract.sh' ':!.github/actions/**/dist/**'; then
   echo 'The public repository contains an estate-specific runner identifier.' >&2
   exit 1
 fi

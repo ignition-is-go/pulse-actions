@@ -8,7 +8,7 @@ const env = {
   CACHE_AUTH: 'static', CACHE_ENDPOINT: 'http://cache.example.invalid:9000',
   CACHE_BUCKET: 'cache', CACHE_ACCESS_KEY: 'test', CACHE_SECRET_KEY: 'test',
   CACHE_WORKSPACES: '.', CACHE_SHARED_KEY: 'v1', CACHE_LOCK_HASH: 'lock',
-  CACHE_ENV_HASH: 'manifests', CACHE_DEFAULT_BRANCH: 'main',
+  CACHE_ENV_HASH: 'manifests', CACHE_TRANSFER: 'staged', CACHE_DEFAULT_BRANCH: 'main',
   GITHUB_WORKSPACE: root, GITHUB_REPOSITORY: 'example/repo',
   GITHUB_REF: 'refs/heads/main', RUNNER_OS: 'Linux', RUNNER_ARCH: 'X64',
 };
@@ -34,7 +34,7 @@ test('keys separate repositories, branches, toolchains, dependencies and build e
     {GITHUB_REPOSITORY: 'example/other'}, {GITHUB_REF: 'refs/heads/feature'},
     {RUNNER_OS: 'Windows'}, {RUNNER_ARCH: 'ARM64'}, {CACHE_LOCK_HASH: 'new-lock'},
     {CACHE_ENV_HASH: 'new-manifests'}, {CACHE_SHARED_KEY: 'v2'}, {RUSTFLAGS: '-C target-cpu=native'},
-    {CACHE_WORKSPACES: '. -> other-target'},
+    {CACHE_WORKSPACES: '. -> other-target'}, {CACHE_TRANSFER: 'streaming'},
   ]) assert.notEqual(config(changes).key, base.key);
   assert.notEqual(prepare(env, (p, ...args) => p === 'rustc' ? 'new compiler' : run(p, ...args)).key, base.key);
   assert.notEqual(prepare(env, (p, ...args) => p === 'git' ? 'new revision' : run(p, ...args)).key, base.key);

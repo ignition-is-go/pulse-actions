@@ -60,7 +60,7 @@ function prepare(env, run = (program, args, cwd) =>
     /^(RUSTFLAGS|RUSTDOCFLAGS|CARGO_ENCODED_RUSTFLAGS|CARGO_BUILD_TARGET|CC|CXX|CFLAGS|CXXFLAGS)$/.test(name)
     || /^CARGO_(PROFILE_|TARGET_)/.test(name)).sort(([a], [b]) => a.localeCompare(b));
   const identity = hash([env.RUNNER_OS, env.RUNNER_ARCH, compiler, uniquePaths.map(p => path.relative(root, p)),
-    env.CACHE_SHARED_KEY, env.CACHE_ENV_HASH, env.CACHE_LOCK_HASH, buildEnv]);
+    env.CACHE_SHARED_KEY, env.CACHE_ENV_HASH, env.CACHE_LOCK_HASH, env.CACHE_TRANSFER, buildEnv]);
   // The provider uses path.join for S3 objects, so nested keys break on Windows.
   const namespace = env.RUNNER_OS === 'Windows' ? 'rust-target-v1-' : 'rust/v1/targets/';
   const prefix = `${namespace}${hash(env.GITHUB_REPOSITORY)}-${identity}`;

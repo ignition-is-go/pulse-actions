@@ -26,6 +26,14 @@ on:
         description: Target-directory cache backend (github or s3). S3 requires static compiler-cache credentials.
         type: string
         default: github
+      cache-s3-transfer:
+        description: S3 target-cache transfer mode (staged or streaming). Streaming requires Linux.
+        type: string
+        default: staged
+      cache-zstd-level:
+        description: S3 target-cache zstd compression level (1 through 19).
+        type: string
+        default: "3"
       compiler-cache-auth:
         description: Compiler-cache authentication mode (static, ambient, or anonymous).
         type: string
@@ -72,6 +80,8 @@ jobs:
         with:
           toolchain: ${{ inputs.toolchain }}
           cache-target-backend: ${{ inputs.cache-target-backend }}
+          cache-s3-transfer: ${{ inputs.cache-s3-transfer }}
+          cache-zstd-level: ${{ inputs.cache-zstd-level }}
           components: clippy
           targets: ${{ inputs.targets }}
           linux-dependencies: openssl
