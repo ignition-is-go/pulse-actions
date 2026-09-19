@@ -60,6 +60,7 @@ def exercise(base, provider_id):
         "RUNNER_OS": {"Darwin": "macOS"}.get(platform.system(), platform.system()),
         "RUNNER_ARCH": platform.machine(),
         "CACHE_WORKSPACES": ".", "CACHE_SHARED_KEY": "round-trip",
+        "CACHE_CARGO_HOME": str(base / "cargo-home"),
         "CACHE_TRANSFER": "streaming" if provider_id.endswith("streaming") else "staged",
         "CACHE_DEFAULT_BRANCH": "main", "CACHE_AUTH": "static", "CACHE_BUCKET": bucket,
         "CACHE_ACCESS_KEY": "testing", "CACHE_SECRET_KEY": "testing",
@@ -110,25 +111,36 @@ def exercise(base, provider_id):
         log = run(restore, workspace, env)
         assert command_file(base / "output")["cache-hit"] == "false", log
         env.update({f"STATE_{k}": v for k, v in command_file(base / "state").items()})
-        run(["cargo", "test", "--locked"], workspace, env)
-        targets = [Path(p) for p in config["paths"].splitlines()]
-        assert workspace / "output" in targets
-        assert workspace / "build" in targets
-        artifacts = {str(p.relative_to(workspace)): hashlib.sha256(p.read_bytes()).hexdigest()
+        cargo_home = provider_id == "cargo-registry-cache-s3"
+        if cargo_home:
+            targets = [Path(p) for p in config["cargo-home-paths"].splitlines()]
+            for index, target in enumerate(targets):
+                target.mkdir(parents=True)
+                (target / "fixture").write_text(f"cargo-home-{index}")
+        else:
+            run(["cargo", "test", "--locked"], workspace, env)
+            targets = [Path(p) for p in config["paths"].splitlines()]
+            assert workspace / "output" in targets
+            assert workspace / "build" in targets
+        artifacts = {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
                      for target in targets for p in target.rglob("*") if p.is_file()}
         assert artifacts, "Rust build produced no artifacts"
         log = run(save, workspace, env)
         assert "cache saved to s3" in log.lower(), log
         objects = client.list_objects_v2(Bucket=bucket)["Contents"]
-        namespace = "rust-target-v1-" if platform.system() == "Windows" else "rust/v1/targets/"
+        if cargo_home:
+            namespace = "rust-cargo-home-v1-" if platform.system() == "Windows" else "rust/v1/cargo-home/"
+        else:
+            namespace = "rust-target-v1-" if platform.system() == "Windows" else "rust/v1/targets/"
         assert len(objects) == 1 and objects[0]["Key"].startswith(namespace), objects
         for target in targets:
             shutil.rmtree(target)
         log = run(restore, workspace, env)
         assert command_file(base / "output")["cache-hit"] == "true", log
-        for relative, digest in artifacts.items():
-            assert hashlib.sha256((workspace / relative).read_bytes()).hexdigest() == digest, relative
-        run(["cargo", "test", "--offline", "--locked"], workspace, env)
+        for artifact, digest in artifacts.items():
+            assert hashlib.sha256(Path(artifact).read_bytes()).hexdigest() == digest, artifact
+        if not cargo_home:
+            run(["cargo", "test", "--offline", "--locked"], workspace, env)
         env["INPUT_KEY"] += "-next-commit"
         env["INPUT_RESTORE-ONLY"] = "true"
         log = run(restore, workspace, env)
@@ -137,15 +149,15 @@ def exercise(base, provider_id):
         assert "cache" in log.lower() and "s3" in log.lower(), log
         run(save, workspace, env)
         assert len(client.list_objects_v2(Bucket=bucket)["Contents"]) == 1
-        print(f"PASS ({provider_id}): restored {len(artifacts)} Rust build files byte-for-byte from S3.")
-        print(f"PASS ({provider_id}): prefix restore and read-only mode work.")
+        print(f"PASS ({provider_id}): restored {len(artifacts)} cached files byte-for-byte from S3.")
+        print(f"PASS ({provider_id}): fallback behavior and read-only mode work.")
     finally:
         server.stop()
 
 
 with tempfile.TemporaryDirectory(prefix="pulse-s3-test-") as directory:
     root = Path(directory).resolve()
-    providers = ["s3-target-cache-staged"]
+    providers = ["cargo-registry-cache-s3", "s3-target-cache-staged"]
     if platform.system() == "Linux":
         providers.append("s3-target-cache-streaming")
     for provider_id in providers:

@@ -72,6 +72,11 @@ function prepare(env, run = (program, args, cwd) =>
   const pullRequest = env.GITHUB_EVENT_NAME === 'pull_request';
   const restoreOnly = env.GITHUB_EVENT_NAME === 'pull_request_target' ||
     (pullRequest && env.CACHE_PR_HEAD_REPOSITORY !== env.GITHUB_REPOSITORY);
+  const cargoHome = path.resolve(env.CACHE_CARGO_HOME);
+  const cargoHomePaths = [path.join(cargoHome, 'registry', 'cache'), path.join(cargoHome, 'git', 'db')];
+  const cargoHomeNamespace = env.RUNNER_OS === 'Windows' ? 'rust-cargo-home-v1-' : 'rust/v1/cargo-home/';
+  const cargoHomeIdentity = hash([env.RUNNER_OS, env.RUNNER_ARCH, compiler, env.CACHE_SHARED_KEY,
+    env.CACHE_LOCK_HASH]);
   return {
     endpoint: endpoint.hostname,
     port: endpoint.port || (endpoint.protocol === 'https:' ? '443' : '80'),
@@ -80,6 +85,8 @@ function prepare(env, run = (program, args, cwd) =>
     key: `${branchPrefix}${revision}`,
     'restore-key': [...new Set(restorePrefixes)].join('\n'),
     'restore-only': String(restoreOnly),
+    'cargo-home-paths': cargoHomePaths.join('\n'),
+    'cargo-home-key': `${cargoHomeNamespace}${hash(env.GITHUB_REPOSITORY)}-${cargoHomeIdentity}`,
   };
 }
 

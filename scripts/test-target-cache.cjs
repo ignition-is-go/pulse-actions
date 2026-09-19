@@ -9,6 +9,7 @@ const env = {
   CACHE_BUCKET: 'cache', CACHE_ACCESS_KEY: 'test', CACHE_SECRET_KEY: 'test',
   CACHE_WORKSPACES: '.', CACHE_SHARED_KEY: 'v1', CACHE_LOCK_HASH: 'lock',
   CACHE_ENV_HASH: 'manifests', CACHE_TRANSFER: 'staged', CACHE_DEFAULT_BRANCH: 'main',
+  CACHE_CARGO_HOME: path.join(root, '.cargo'),
   GITHUB_WORKSPACE: root, GITHUB_REPOSITORY: 'example/repo',
   GITHUB_REF: 'refs/heads/main', RUNNER_OS: 'Linux', RUNNER_ARCH: 'X64',
 };
@@ -27,6 +28,14 @@ test('resolves custom Cargo target and endpoint transport', () => {
 test('supports explicit workspace mappings and deduplicates targets', () => {
   assert.equal(config({CACHE_WORKSPACES: '. -> target\n. -> target\nsub -> output'}).paths,
     [path.join(root, 'target'), path.join(root, 'sub/output')].join('\n'));
+});
+test('uses separate lockfile-based paths and keys for the Cargo home cache', () => {
+  const result = config();
+  assert.equal(result['cargo-home-paths'], [path.join(root, '.cargo/registry/cache'),
+    path.join(root, '.cargo/git/db')].join('\n'));
+  assert.notEqual(result['cargo-home-key'], result.key);
+  assert.equal(config({GITHUB_REF: 'refs/heads/other'})['cargo-home-key'], result['cargo-home-key']);
+  assert.notEqual(config({CACHE_LOCK_HASH: 'other-lock'})['cargo-home-key'], result['cargo-home-key']);
 });
 test('keys separate repositories, branches, toolchains, dependencies and build environments', () => {
   const base = config();
