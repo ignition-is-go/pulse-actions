@@ -37,4 +37,8 @@ S3 archives contain Cargo's target and build directories, including workspace cr
 
 The archive transport requires bucket listing/location and multipart-upload permissions in addition to object reads and writes. The [target-cache policy example](target-cache-policy.json) supplies the full set for `rust/v1/targets/` on Linux and macOS and `rust-target-v1-` on Windows. An existing policy granting these operations under `rust/v1/*` already covers Unix target archives and its lifecycle rule also applies. Windows retains the flat namespace until the provider supports portable S3 object paths. Add only missing permissions alongside existing compiler-cache permissions after replacing the example bucket name.
 
-With S3 enabled, `rust-cache-hit` and `offline` require both the target archive and Cargo registry cache to match their primary keys. `offline` also requires the optional sparse-index cache to match. These outputs report cache state, not proof that an arbitrary subsequent Cargo command can run offline. Registry and sparse-index storage remain on GitHub. Existing GitHub-backend defaults and behavior are unchanged.
+With S3 enabled, `rust-cache-hit` and `offline` require both the target archive and Cargo registry cache to match their primary keys. `offline` also requires the optional sparse-index cache to match. These outputs report cache state, not proof that an arbitrary subsequent Cargo command can run offline. Existing GitHub-backend defaults and behavior are unchanged.
+
+## Artifact backend
+
+`actions/upload-artifact` and `actions/download-artifact` accept `github` or `s3` through the `backend` input and default to `github`. S3 artifact transfers support Linux, preserve workspace-relative paths, and use `artifacts/v1/<repository>/<run>/<name>.tzst` objects. S3 retention is controlled by bucket lifecycle policy. Paths are literal; glob patterns are rejected.

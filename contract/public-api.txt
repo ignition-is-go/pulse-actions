@@ -1,5 +1,7 @@
 actions/report-resources/action.yml
+actions/download-artifact/action.yml
 actions/setup-rust/action.yml
+actions/upload-artifact/action.yml
 .github/workflows/cargo-flux-quality.yml
 .github/workflows/rust-native-build.yml
 .github/workflows/rust-quality.yml

@@ -1,0 +1,68 @@
+name: Upload artifact
+description: Upload a workflow artifact to GitHub or S3.
+
+inputs:
+  backend:
+    description: Artifact backend (github or s3).
+    default: github
+  name:
+    description: Artifact name.
+    required: true
+  path:
+    description: Newline-separated paths to upload.
+    required: true
+  retention-days:
+    description: GitHub artifact retention in days.
+    default: "0"
+  compression-level:
+    description: Archive compression level (0 through 9 for GitHub; 1 through 19 for S3).
+    default: "6"
+  s3-endpoint:
+    description: S3-compatible endpoint URL.
+    default: ""
+  s3-bucket:
+    description: S3 bucket.
+    default: ""
+  s3-access-key:
+    description: S3 access key.
+    default: ""
+  s3-secret-key:
+    description: S3 secret key.
+    default: ""
+  s3-session-token:
+    description: Optional S3 session token.
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Validate artifact backend
+      shell: bash
+      env:
+        BACKEND: ${{ inputs.backend }}
+      run: |
+        case "$BACKEND" in
+          github|s3) ;;
+          *) echo 'Artifact backend must be github or s3.' >&2; exit 1 ;;
+        esac
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      if: inputs.backend == 'github'
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ inputs.path }}
+        retention-days: ${{ inputs.retention-days }}
+        compression-level: ${{ inputs.compression-level }}
+        if-no-files-found: error
+    - uses: $/.github/actions/s3-artifact
+      if: inputs.backend == 's3'
+      with:
+        operation: upload
+        endpoint: ${{ inputs.s3-endpoint }}
+        bucket: ${{ inputs.s3-bucket }}
+        access-key: ${{ inputs.s3-access-key }}
+        secret-key: ${{ inputs.s3-secret-key }}
+        session-token: ${{ inputs.s3-session-token }}
+        name: ${{ inputs.name }}
+        path: ${{ inputs.path }}
+        run-id: ${{ github.run_id }}
+        compression-level: ${{ inputs.compression-level }}
