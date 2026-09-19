@@ -72,6 +72,7 @@ Set `cache-target-backend: s3` on `actions/setup-rust` or a Rust reusable workfl
 ```yaml
 with:
   cache-target-backend: s3
+  cache-s3-transfer: streaming
   cache-zstd-level: "3"
   compiler-cache-endpoint: ${{ secrets.CI_CACHE_ENDPOINT }}
   compiler-cache-bucket: ${{ secrets.CI_CACHE_BUCKET }}
@@ -84,6 +85,8 @@ For reusable workflows, set `cache-target-backend` under `with` and pass the fou
 The action resolves target and build directories with `cargo metadata`, including custom Cargo configuration. `cache-workspaces` also accepts explicit mappings such as `. -> target` or `crates/service -> output`. An explicit mapping caches only the named directory. `cache-targets: 'false'` disables build-directory caching for either backend.
 
 S3 target archives retain zstd's level 3 default. Set `cache-zstd-level` from 1 through 19 when storage or network constraints justify a different tradeoff. Fast LAN caches may benefit from level 1 because it spends less time compressing a larger archive.
+
+S3 caches use the existing staged provider by default. On Linux, set `cache-s3-transfer: streaming` to pipe the archive between tar, zstd, and S3 without writing a temporary compressed archive. Streaming overlaps compression or decompression with network transfer and reduces temporary disk use. macOS and Windows accept only the staged mode.
 
 Linux and macOS archives use `rust/v1/targets/`, covered by existing `rust/v1/*` compiler-cache permissions and retention rules. Windows retains `rust-target-v1-` because the pinned provider uses platform-specific path separators for S3 object names. Unix caches saved under the old prefix will miss once and populate the new namespace. Cache keys include the repository, branch, actual compiler version, operating system, architecture, dependency lockfile, build settings, workspace paths, and checked-out commit. A miss can restore an older archive from the same ref, the PR base branch, or the default branch, in that order. Archives retain workspace crates as well as dependencies. Cargo still checks whether restored artifacts are reusable. Successful jobs save new archives. Same-repository pull requests save under their own pull-request ref, so later commits can reuse their outputs without making them available to branch builds or other pull requests. Fork pull requests and pull_request_target jobs only restore. The credentials need `s3:ListBucket` for this prefix and `s3:GetObject`/`s3:PutObject` for its objects. Set a bucket lifecycle rule on this prefix to expire old archives.
 

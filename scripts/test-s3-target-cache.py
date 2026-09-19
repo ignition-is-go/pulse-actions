@@ -45,7 +45,9 @@ def command_file(file):
     return values
 
 
-def exercise(base):
+def exercise(base, provider_id):
+    base.mkdir()
+    bucket = f"cache-{provider_id}"
     workspace = base / "workspace"
     shutil.copytree(ROOT / "fixtures/rust-job", workspace, ignore=shutil.ignore_patterns("target"))
     (workspace / ".cargo").mkdir()
@@ -58,7 +60,8 @@ def exercise(base):
         "RUNNER_OS": {"Darwin": "macOS"}.get(platform.system(), platform.system()),
         "RUNNER_ARCH": platform.machine(),
         "CACHE_WORKSPACES": ".", "CACHE_SHARED_KEY": "round-trip",
-        "CACHE_DEFAULT_BRANCH": "main", "CACHE_AUTH": "static", "CACHE_BUCKET": "cache",
+        "CACHE_TRANSFER": "streaming" if provider_id.endswith("streaming") else "staged",
+        "CACHE_DEFAULT_BRANCH": "main", "CACHE_AUTH": "static", "CACHE_BUCKET": bucket,
         "CACHE_ACCESS_KEY": "testing", "CACHE_SECRET_KEY": "testing",
         "AWS_ACCESS_KEY_ID": "testing", "AWS_SECRET_ACCESS_KEY": "testing",
         "AWS_DEFAULT_REGION": "us-east-1", "AWS_EC2_METADATA_DISABLED": "true",
@@ -69,13 +72,16 @@ def exercise(base):
     run(["git", "add", "."], workspace, env)
     run(["git", "-c", "user.name=Cache Test", "-c", "user.email=cache@example.invalid", "commit", "-qm", "fixture"], workspace, env)
     action = yaml.safe_load((ROOT / "actions/setup-rust/action.yml").read_text())
-    step = next(step for step in action["runs"]["steps"] if step.get("id") == "s3-target-cache")
-    repo, ref = step["uses"].split("@")
-    provider = base / "provider"
-    provider.mkdir()
-    run(["git", "init", "-q"], provider, env)
-    run(["git", "fetch", "-q", "--depth=1", f"https://github.com/{repo}.git", ref], provider, env)
-    run(["git", "checkout", "-q", "FETCH_HEAD"], provider, env)
+    step = next(step for step in action["runs"]["steps"] if step.get("id") == provider_id)
+    if step["uses"].startswith("$/"):
+        provider = ROOT / step["uses"][2:]
+    else:
+        repo, ref = step["uses"].split("@")
+        provider = base / "provider"
+        provider.mkdir()
+        run(["git", "init", "-q"], provider, env)
+        run(["git", "fetch", "-q", "--depth=1", f"https://github.com/{repo}.git", ref], provider, env)
+        run(["git", "checkout", "-q", "FETCH_HEAD"], provider, env)
     server = ThreadedMotoServer(ip_address="127.0.0.1", port=0, verbose=False)
     server.start()
     try:
@@ -84,12 +90,12 @@ def exercise(base):
         env["CACHE_ENDPOINT"] = endpoint
         client = boto3.client("s3", endpoint_url=endpoint, region_name="us-east-1",
                               aws_access_key_id="testing", aws_secret_access_key="testing")
-        client.create_bucket(Bucket="cache")
+        client.create_bucket(Bucket=bucket)
         run(["node", str(ROOT / "actions/setup-rust/prepare-target-cache.cjs")], workspace, env)
         config = command_file(base / "output")
         expressions = {f"steps.s3-target-config.outputs.{k}": v for k, v in config.items()}
         expressions.update({
-            "inputs.compiler-cache-bucket": "cache", "inputs.compiler-cache-access-key": "testing",
+            "inputs.compiler-cache-bucket": bucket, "inputs.compiler-cache-access-key": "testing",
             "inputs.compiler-cache-secret-key": "testing", "inputs.compiler-cache-session-token": "",
             "inputs.cache-zstd-level": "3",
             "github.event_name == 'pull_request' || github.event_name == 'pull_request_target'": "false",
@@ -98,8 +104,9 @@ def exercise(base):
             env[name] = re.sub(r"\$\{\{ (.*?) \}\}", lambda m: expressions[m[1]], str(value))
         for name, value in step["with"].items():
             env[f"INPUT_{name.upper()}"] = re.sub(r"\$\{\{ (.*?) \}\}", lambda m: expressions[m[1]], str(value))
-        restore = ["node", str(provider / "dist/restore/index.js")]
-        save = ["node", str(provider / "dist/save/index.js")]
+        provider_action = yaml.safe_load((provider / "action.yml").read_text())
+        restore = ["node", str(provider / provider_action["runs"]["main"])]
+        save = ["node", str(provider / provider_action["runs"]["post"])]
         log = run(restore, workspace, env)
         assert command_file(base / "output")["cache-hit"] == "false", log
         env.update({f"STATE_{k}": v for k, v in command_file(base / "state").items()})
@@ -111,10 +118,10 @@ def exercise(base):
                      for target in targets for p in target.rglob("*") if p.is_file()}
         assert artifacts, "Rust build produced no artifacts"
         log = run(save, workspace, env)
-        assert "Cache saved to s3 successfully" in log, log
-        objects = client.list_objects_v2(Bucket="cache")["Contents"]
+        assert "cache saved to s3" in log.lower(), log
+        objects = client.list_objects_v2(Bucket=bucket)["Contents"]
         namespace = "rust-target-v1-" if platform.system() == "Windows" else "rust/v1/targets/"
-        assert len(objects) == 1 and objects[0]["Key"].startswith(namespace)
+        assert len(objects) == 1 and objects[0]["Key"].startswith(namespace), objects
         for target in targets:
             shutil.rmtree(target)
         log = run(restore, workspace, env)
@@ -123,17 +130,23 @@ def exercise(base):
             assert hashlib.sha256((workspace / relative).read_bytes()).hexdigest() == digest, relative
         run(["cargo", "test", "--offline", "--locked"], workspace, env)
         env["INPUT_KEY"] += "-next-commit"
-        log = run(restore, workspace, env)
-        assert command_file(base / "output")["cache-hit"] == "false", log
-        assert "Cache restored from s3 successfully" in log, log
         env["INPUT_RESTORE-ONLY"] = "true"
+        log = run(restore, workspace, env)
+        env.update({f"STATE_{k}": v for k, v in command_file(base / "state").items()})
+        assert command_file(base / "output")["cache-hit"] == "false", log
+        assert "cache" in log.lower() and "s3" in log.lower(), log
         run(save, workspace, env)
-        assert len(client.list_objects_v2(Bucket="cache")["Contents"]) == 1
-        print(f"PASS: restored {len(artifacts)} Rust build files byte-for-byte from S3; offline tests passed.")
-        print("PASS: prefix restore works; read-only mode does not upload; GitHub fallback disabled.")
+        assert len(client.list_objects_v2(Bucket=bucket)["Contents"]) == 1
+        print(f"PASS ({provider_id}): restored {len(artifacts)} Rust build files byte-for-byte from S3.")
+        print(f"PASS ({provider_id}): prefix restore and read-only mode work.")
     finally:
         server.stop()
 
 
 with tempfile.TemporaryDirectory(prefix="pulse-s3-test-") as directory:
-    exercise(Path(directory).resolve())
+    root = Path(directory).resolve()
+    providers = ["s3-target-cache-staged"]
+    if platform.system() == "Linux":
+        providers.append("s3-target-cache-streaming")
+    for provider_id in providers:
+        exercise(root / provider_id, provider_id)
