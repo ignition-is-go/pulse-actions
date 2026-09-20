@@ -70,7 +70,7 @@ function prepare(env, run = (program, args, cwd) =>
   if (env.GITHUB_BASE_REF) restorePrefixes.push(`${prefix}-${hash(`refs/heads/${env.GITHUB_BASE_REF}`)}-`);
   restorePrefixes.push(defaultPrefix);
   const pullRequest = env.GITHUB_EVENT_NAME === 'pull_request';
-  const restoreOnly = env.GITHUB_EVENT_NAME === 'pull_request_target' ||
+  const restoreOnly = env.CACHE_SAVE_IF === 'false' || env.GITHUB_EVENT_NAME === 'pull_request_target' ||
     (pullRequest && env.CACHE_PR_HEAD_REPOSITORY !== env.GITHUB_REPOSITORY);
   const cargoHome = path.resolve(env.CACHE_CARGO_HOME);
   const cargoHomePaths = [path.join(cargoHome, 'registry', 'cache'), path.join(cargoHome, 'git', 'db')];

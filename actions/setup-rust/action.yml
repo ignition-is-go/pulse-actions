@@ -30,7 +30,7 @@ inputs:
     description: S3 target archive transfer mode (staged or streaming). Streaming supports Linux only.
     default: staged
   cache-save-if:
-    description: Save the GitHub Cargo cache after the job.
+    description: Save the Cargo target cache after the job.
     default: "true"
   add-rust-environment-hash-key:
     description: Include the Rust compiler environment in the cache key.
@@ -208,6 +208,7 @@ runs:
         CACHE_SPARSE_INDEX_ENABLED: ${{ inputs.windows-sparse-index }}
         CACHE_SPARSE_INDEX_PATH: ${{ inputs.windows-sparse-index-path }}
         CACHE_TRANSFER: ${{ inputs.cache-s3-transfer }}
+        CACHE_SAVE_IF: ${{ inputs.cache-save-if }}
         CACHE_SHARED_KEY: ${{ inputs.cache-shared-key }}
         CACHE_ENV_HASH: ${{ inputs.add-rust-environment-hash-key == 'true' && hashFiles('**/Cargo.toml', '**/.cargo/config', '**/.cargo/config.toml', '**/rust-toolchain', '**/rust-toolchain.toml') || '' }}
         CACHE_LOCK_HASH: ${{ steps.lockfile.outputs.hash }}
