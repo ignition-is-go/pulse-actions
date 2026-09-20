@@ -52,7 +52,8 @@ with tempfile.TemporaryDirectory(prefix="pulse-s3-artifact-") as directory:
         }
         run(workspace, env)
         objects = client.list_objects_v2(Bucket="artifacts")["Contents"]
-        assert len(objects) == 1 and objects[0]["Key"].endswith("/123/linux-build.tzst"), objects
+        assert len(objects) == 1 and objects[0]["Key"].startswith("rust/v1/artifacts/"), objects
+        assert objects[0]["Key"].endswith("/123/linux-build.tzst"), objects
         shutil.rmtree(workspace / "target")
         shutil.rmtree(workspace / "web")
         destination = workspace / "restored"

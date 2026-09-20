@@ -36,7 +36,7 @@ function objectKey() {
   const runId = core.getInput('run-id', { required: true });
   const name = encodeURIComponent(core.getInput('name', { required: true }));
   if (!/^\d+$/.test(runId)) throw new Error('Artifact run ID must be numeric.');
-  return `artifacts/v1/${repository}/${runId}/${name}.tzst`;
+  return `rust/v1/artifacts/${repository}/${runId}/${name}.tzst`;
 }
 
 function uploadPaths() {
@@ -63,9 +63,15 @@ async function upload(client, bucket, key) {
     '--files-from', manifest, '--use-compress-program', 'zstdmt'], {
     stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env, ZSTD_CLEVEL: level },
   });
+  const archive = waitFor(tar, 'artifact upload');
   try {
     core.info(`Streaming artifact to S3 with zstd level ${level}.`);
-    await Promise.all([client.putObject(bucket, key, tar.stdout), waitFor(tar, 'artifact upload')]);
+    await Promise.all([client.putObject(bucket, key, tar.stdout), archive]);
+  } catch (error) {
+    tar.stdout.destroy();
+    tar.kill();
+    await archive.catch(() => {});
+    throw error;
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
   }

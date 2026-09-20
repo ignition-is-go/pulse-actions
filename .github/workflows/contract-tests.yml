@@ -48,6 +48,7 @@ jobs:
       - run: ./scripts/test-action-pin-check.sh
       - run: ./scripts/test-workflow-validation.sh
       - run: ./scripts/test-sccache-unreachable.sh
+      - run: node scripts/test-s3-artifact-failure.cjs
 
   s3-target-cache:
     name: S3 target cache (${{ matrix.os }})
