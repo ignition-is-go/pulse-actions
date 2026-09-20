@@ -98,4 +98,4 @@ Run `node --test scripts/test-target-cache.cjs` for configuration tests. Run `uv
 
 ## Workflow artifact storage
 
-`actions/upload-artifact` and `actions/download-artifact` route artifacts through GitHub by default. Set `backend: s3` and provide the `s3-*` endpoint, bucket, and credential inputs to stream Linux artifacts through S3 instead. S3 uploads accept literal workspace-relative paths and preserve that layout beneath the download destination. Objects use the `artifacts/v1/` prefix and the workflow run ID, so configure bucket lifecycle retention for that prefix.
+`actions/upload-artifact` and `actions/download-artifact` route artifacts through GitHub by default. Set `backend: s3` and provide the `s3-*` endpoint, bucket, and credential inputs to stream Linux artifacts through S3 instead. S3 uploads accept literal workspace-relative paths and preserve that layout beneath the download destination. Objects use the `rust/v1/artifacts/` prefix and the workflow run ID, so the existing `rust/v1/*` cache policy and lifecycle rules cover them.

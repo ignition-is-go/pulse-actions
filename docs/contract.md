@@ -41,4 +41,4 @@ With S3 enabled, `rust-cache-hit` and `offline` require both the target archive 
 
 ## Artifact backend
 
-`actions/upload-artifact` and `actions/download-artifact` accept `github` or `s3` through the `backend` input and default to `github`. S3 artifact transfers support Linux, preserve workspace-relative paths, and use `artifacts/v1/<repository>/<run>/<name>.tzst` objects. S3 retention is controlled by bucket lifecycle policy. Paths are literal; glob patterns are rejected.
+`actions/upload-artifact` and `actions/download-artifact` accept `github` or `s3` through the `backend` input and default to `github`. S3 artifact transfers support Linux, preserve workspace-relative paths, and use `rust/v1/artifacts/<repository>/<run>/<name>.tzst` objects. S3 retention is controlled by bucket lifecycle policy. Paths are literal; glob patterns are rejected.
