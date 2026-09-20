@@ -1,3 +1,9 @@
+4d56952b0fb13bf8f9b6c13a6d4c34a075bac3af447636a1df4335d7576e2f97  .github/actions/s3-artifact/.gitignore
+4905aecc8e9fb9baa30bf0059b3911b1f380fae58a9150aad9c1f1f88bb88529  .github/actions/s3-artifact/action.yml
+b4f63fad191a2adf548304ea3eb515ad890e8623675bf579cb6414da19fa67cd  .github/actions/s3-artifact/dist/index.js
+ab2ed6027f15d4e2d7ea800138ac9bcc46d6324d2007b40b9eac5f6d8575a860  .github/actions/s3-artifact/package-lock.json
+67d04cd2fa874451c0babca55664bee94611f730cf6fa834c473c40444f3d43d  .github/actions/s3-artifact/package.json
+bd7d199970323f87865ccbd327309a75b166ee993a50796922661c1e53e70393  .github/actions/s3-artifact/src/index.js
 4d56952b0fb13bf8f9b6c13a6d4c34a075bac3af447636a1df4335d7576e2f97  .github/actions/s3-target-cache/.gitignore
 521cda0ad3bd72118fc0c5a918eed7d5080b40f51b72490d2b2eed775f8275c7  .github/actions/s3-target-cache/action.yml
 51570729b1777b3aa741a5bd2466effb73e80b777ebc6eadb1ddef172d37a7df  .github/actions/s3-target-cache/dist/main/index.js
@@ -20,6 +26,8 @@ e579b8c18af0b2b3e3b38d8b6ccbc00ec0b608edf59a4281db6f0fac29f9fcb3  .github/action
 155614e81c83b700859dc240f93b3d4089671df4cf6367586d705ea9e7c5290c  .github/workflows/rust-native-build.yml
 d98de4653cd0b2fe226b1307b18fd93b6172baf32ea5150f7db7cf430d7bcdb2  .github/workflows/rust-quality.yml
 5683e1097e5e9c11f614fbe60b94fb02fa4932fe87a98ddaae2f9fcbafe76185  .github/workflows/validate-workflows.yml
+099ea38c607f6b363d0e6c0ec29a49f17168117aa05d0deaf7bee3c0d44784ac  actions/download-artifact/action.yml
 a442b979367ad661f143c4c46631362880feff05fb5977640aa1997be11dda7c  actions/report-resources/action.yml
 280197282581eea5c7084eb9f894a0658d580f29ea5a2b90b9775cd98f2a5b88  actions/setup-rust/action.yml
 ec080b16b3d1cd638996744a0dd3437d723dfb4f46b41575b02133900012857e  actions/setup-rust/prepare-target-cache.cjs
+18d66ba9674269418a669e5dc99b0e42eaa3aa6d0387e7cb6e95d338ad3bb072  actions/upload-artifact/action.yml

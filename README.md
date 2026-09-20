@@ -95,3 +95,7 @@ Large target archives use multipart uploads. The archive provider also requires 
 The optional Windows sparse index follows the selected backend as part of the Cargo-home cache. S3 archive failures appear in job logs and do not fall back to GitHub. Missing credentials fail setup when S3 caching is explicitly selected. The default backend remains `github`.
 
 Run `node --test scripts/test-target-cache.cjs` for configuration tests. Run `uv run scripts/test-s3-target-cache.py` to build a Rust fixture and verify its archive round trip against a local S3 test server, without LAN credentials.
+
+## Workflow artifact storage
+
+`actions/upload-artifact` and `actions/download-artifact` route artifacts through GitHub by default. Set `backend: s3` and provide the `s3-*` endpoint, bucket, and credential inputs to stream Linux artifacts through S3 instead. S3 uploads accept literal workspace-relative paths and preserve that layout beneath the download destination. Objects use the `artifacts/v1/` prefix and the workflow run ID, so configure bucket lifecycle retention for that prefix.
