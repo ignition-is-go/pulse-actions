@@ -260,7 +260,7 @@ runs:
         key: ${{ steps.s3-target-config.outputs.key }}
         restore-keys: ${{ steps.s3-target-config.outputs.restore-key }}
         use-fallback: 'false'
-        restore-only: ${{ steps.s3-target-config.outputs.restore-only }}
+        restore-only: ${{ steps.s3-target-config.outputs.target-restore-only }}
 
     - name: Restore and save streaming S3 target cache
       if: inputs.cache-targets == 'true' && inputs.cache-target-backend == 's3' && inputs.cache-s3-transfer == 'streaming'
@@ -278,7 +278,7 @@ runs:
         path: ${{ steps.s3-target-config.outputs.paths }}
         key: ${{ steps.s3-target-config.outputs.key }}
         restore-keys: ${{ steps.s3-target-config.outputs.restore-key }}
-        restore-only: ${{ steps.s3-target-config.outputs.restore-only }}
+        restore-only: ${{ steps.s3-target-config.outputs.target-restore-only }}
         compression-level: ${{ inputs.cache-zstd-level }}
 
     - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5

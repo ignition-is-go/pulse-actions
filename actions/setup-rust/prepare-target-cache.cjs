@@ -70,8 +70,9 @@ function prepare(env, run = (program, args, cwd) =>
   if (env.GITHUB_BASE_REF) restorePrefixes.push(`${prefix}-${hash(`refs/heads/${env.GITHUB_BASE_REF}`)}-`);
   restorePrefixes.push(defaultPrefix);
   const pullRequest = env.GITHUB_EVENT_NAME === 'pull_request';
-  const restoreOnly = env.CACHE_SAVE_IF === 'false' || env.GITHUB_EVENT_NAME === 'pull_request_target' ||
+  const restoreOnly = env.GITHUB_EVENT_NAME === 'pull_request_target' ||
     (pullRequest && env.CACHE_PR_HEAD_REPOSITORY !== env.GITHUB_REPOSITORY);
+  const targetRestoreOnly = env.CACHE_SAVE_IF === 'false' || restoreOnly;
   const cargoHome = path.resolve(env.CACHE_CARGO_HOME);
   const cargoHomePaths = [path.join(cargoHome, 'registry', 'cache'), path.join(cargoHome, 'git', 'db')];
   if (env.RUNNER_OS === 'Windows' && env.CACHE_SPARSE_INDEX_ENABLED === 'true') {
@@ -88,6 +89,7 @@ function prepare(env, run = (program, args, cwd) =>
     key: `${branchPrefix}${revision}`,
     'restore-key': [...new Set(restorePrefixes)].join('\n'),
     'restore-only': String(restoreOnly),
+    'target-restore-only': String(targetRestoreOnly),
     'cargo-home-paths': cargoHomePaths.join('\n'),
     'cargo-home-key': `${cargoHomeNamespace}${hash(env.GITHUB_REPOSITORY)}-${cargoHomeIdentity}`,
   };

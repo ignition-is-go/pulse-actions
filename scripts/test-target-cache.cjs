@@ -82,9 +82,11 @@ test('same-repository PRs warm their own cache without exposing it to branch bui
   assert.equal(config({...prEnv, CACHE_PR_HEAD_REPOSITORY: 'fork/repo'})['restore-only'], 'true');
   assert.equal(config({...prEnv, CACHE_PR_HEAD_REPOSITORY: ''})['restore-only'], 'true');
   assert.equal(config({...prEnv, GITHUB_EVENT_NAME: 'pull_request_target'})['restore-only'], 'true');
-  assert.equal(config({...prEnv, CACHE_SAVE_IF: 'false'})['restore-only'], 'true');
+  assert.equal(config({...prEnv, CACHE_SAVE_IF: 'false'})['restore-only'], 'false');
+  assert.equal(config({...prEnv, CACHE_SAVE_IF: 'false'})['target-restore-only'], 'true');
   assert.equal(config({GITHUB_EVENT_NAME: 'push'})['restore-only'], 'false');
-  assert.equal(config({GITHUB_EVENT_NAME: 'push', CACHE_SAVE_IF: 'false'})['restore-only'], 'true');
+  assert.equal(config({GITHUB_EVENT_NAME: 'push', CACHE_SAVE_IF: 'false'})['restore-only'], 'false');
+  assert.equal(config({GITHUB_EVENT_NAME: 'push', CACHE_SAVE_IF: 'false'})['target-restore-only'], 'true');
 });
 test('rejects empty mappings, glob paths and target directories containing source', () => {
   for (const mapping of [' \n ', '. ->', '. -> a -> b', '. -> .', '. -> ..', '. -> target/*']) {
