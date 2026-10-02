@@ -1,0 +1,142 @@
+name: Rust native build
+
+on:
+  workflow_call:
+    inputs:
+      package:
+        type: string
+        required: true
+      toolchain:
+        type: string
+        default: stable
+      linux-runner-json:
+        type: string
+        required: true
+      macos-runner-json:
+        type: string
+        required: true
+      windows-runner-json:
+        type: string
+        required: true
+      timeout-minutes:
+        type: number
+        default: 30
+      linux-compiler-cache:
+        type: boolean
+        default: true
+      macos-compiler-cache:
+        type: boolean
+        default: true
+      macos-x64:
+        description: Build the Intel macOS target.
+        type: boolean
+        default: true
+      windows-compiler-cache:
+        type: boolean
+        default: true
+      windows-target-cache:
+        type: boolean
+        default: true
+      cache-target-backend:
+        description: Cargo cache backend (github or s3). S3 requires static compiler-cache credentials.
+        type: string
+        default: github
+      cache-s3-transfer:
+        description: S3 target-cache transfer mode (staged or streaming). Streaming requires Linux.
+        type: string
+        default: staged
+      cache-zstd-level:
+        description: S3 target-cache zstd compression level (1 through 19).
+        type: string
+        default: "3"
+      compiler-cache-auth:
+        description: Compiler-cache authentication mode (static, ambient, or anonymous).
+        type: string
+        default: static
+      compiler-cache-endpoint:
+        description: Non-secret S3-compatible endpoint. Takes precedence over CI_CACHE_ENDPOINT.
+        type: string
+        default: ""
+      compiler-cache-bucket:
+        description: Non-secret S3-compatible bucket. Takes precedence over CI_CACHE_BUCKET.
+        type: string
+        default: ""
+    secrets:
+      CI_CACHE_ENDPOINT:
+        required: false
+      CI_CACHE_BUCKET:
+        required: false
+      CI_CACHE_ACCESS_KEY:
+        required: false
+      CI_CACHE_SECRET_KEY:
+        required: false
+      CI_CACHE_SESSION_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(inputs.macos-x64 && '["x86_64-unknown-linux-gnu","x86_64-apple-darwin","aarch64-apple-darwin","x86_64-pc-windows-msvc"]' || '["x86_64-unknown-linux-gnu","aarch64-apple-darwin","x86_64-pc-windows-msvc"]') }}
+    runs-on: ${{ fromJSON(matrix.target == 'x86_64-unknown-linux-gnu' && inputs.linux-runner-json || matrix.target == 'x86_64-pc-windows-msvc' && inputs.windows-runner-json || inputs.macos-runner-json) }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    env:
+      COMPILER_CACHE_ENABLED: ${{ matrix.target == 'x86_64-unknown-linux-gnu' && inputs.linux-compiler-cache || matrix.target == 'x86_64-pc-windows-msvc' && inputs.windows-compiler-cache || matrix.target != 'x86_64-unknown-linux-gnu' && matrix.target != 'x86_64-pc-windows-msvc' && inputs.macos-compiler-cache }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
+        if: runner.os == 'Windows'
+      - uses: $/actions/report-resources
+      - name: Validate compiler cache authentication mode
+        shell: bash
+        env:
+          AUTH: ${{ inputs.compiler-cache-auth }}
+        run: |
+          case "$AUTH" in
+            static|ambient|anonymous) ;;
+            *)
+              echo 'Compiler-cache authentication must be static, ambient, or anonymous.' >&2
+              exit 1
+              ;;
+          esac
+      - uses: $/actions/setup-rust
+        with:
+          toolchain: ${{ inputs.toolchain }}
+          cache-target-backend: ${{ inputs.cache-target-backend }}
+          cache-s3-transfer: ${{ inputs.cache-s3-transfer }}
+          cache-zstd-level: ${{ inputs.cache-zstd-level }}
+          targets: ${{ matrix.target }}
+          cache-shared-key: native-${{ matrix.target }}-v1
+          cache-targets: ${{ matrix.target != 'x86_64-pc-windows-msvc' || inputs.windows-target-cache }}
+          linux-dependencies: openssl
+          windows-sparse-index: ${{ runner.os == 'Windows' }}
+          compiler-cache-auth: ${{ env.COMPILER_CACHE_ENABLED == 'true' && inputs.compiler-cache-auth || 'static' }}
+          compiler-cache-endpoint: ${{ env.COMPILER_CACHE_ENABLED == 'true' && (inputs.compiler-cache-endpoint || secrets.CI_CACHE_ENDPOINT) || '' }}
+          compiler-cache-bucket: ${{ env.COMPILER_CACHE_ENABLED == 'true' && (inputs.compiler-cache-bucket || secrets.CI_CACHE_BUCKET) || '' }}
+          compiler-cache-access-key: ${{ env.COMPILER_CACHE_ENABLED == 'true' && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_ACCESS_KEY || '' }}
+          compiler-cache-secret-key: ${{ env.COMPILER_CACHE_ENABLED == 'true' && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SECRET_KEY || '' }}
+          compiler-cache-session-token: ${{ env.COMPILER_CACHE_ENABLED == 'true' && inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SESSION_TOKEN || '' }}
+      - name: Build on Linux or macOS
+        if: runner.os != 'Windows'
+        env:
+          PACKAGE: ${{ inputs.package }}
+          TARGET: ${{ matrix.target }}
+        run: cargo build --release --locked --package "$PACKAGE" --target "$TARGET"
+      - name: Build on Windows
+        if: runner.os == 'Windows'
+        env:
+          PACKAGE: ${{ inputs.package }}
+          TARGET: ${{ matrix.target }}
+        run: cargo build --release --locked --package "$env:PACKAGE" --target "$env:TARGET"
+      - uses: $/actions/report-resources
+        if: always()

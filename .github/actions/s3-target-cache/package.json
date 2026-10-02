@@ -1,0 +1,14 @@
+{
+  "name": "pulse-streaming-s3-target-cache",
+  "private": true,
+  "scripts": {
+    "build": "ncc build src/main.js -o dist/main && ncc build src/post.js -o dist/post"
+  },
+  "dependencies": {
+    "@actions/core": "2.0.3",
+    "minio": "8.0.7"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "0.38.4"
+  }
+}

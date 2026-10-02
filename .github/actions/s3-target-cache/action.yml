@@ -1,0 +1,57 @@
+name: Streaming S3 target cache
+description: Restore and save a tar-zstd cache without staging the archive on disk.
+
+inputs:
+  endpoint:
+    description: S3-compatible endpoint hostname.
+    required: true
+  port:
+    description: S3-compatible endpoint port.
+    required: true
+  insecure:
+    description: Use HTTP instead of HTTPS.
+    required: true
+  region:
+    description: S3 region.
+    default: auto
+  bucket:
+    description: S3 bucket.
+    required: true
+  access-key:
+    description: S3 access key.
+    required: true
+  secret-key:
+    description: S3 secret key.
+    required: true
+  session-token:
+    description: Optional S3 session token.
+    default: ""
+  path:
+    description: Newline-separated absolute paths to cache.
+    required: true
+  key:
+    description: Exact cache key.
+    required: true
+  restore-keys:
+    description: Ordered cache-key prefixes used after an exact miss.
+    default: ""
+  restore-only:
+    description: Restore without saving a new cache.
+    default: "false"
+  compression-level:
+    description: Zstandard compression level.
+    default: "3"
+
+outputs:
+  cache-hit:
+    description: Whether the exact key was restored.
+  cache-size:
+    description: Compressed cache size in bytes.
+  cache-matched-key:
+    description: Cache key selected for restore.
+
+runs:
+  using: node24
+  main: dist/main/index.js
+  post: dist/post/index.js
+  post-if: success()

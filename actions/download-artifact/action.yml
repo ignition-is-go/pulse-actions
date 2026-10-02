@@ -1,0 +1,62 @@
+name: Download artifact
+description: Download a workflow artifact from GitHub or S3.
+
+inputs:
+  backend:
+    description: Artifact backend (github or s3).
+    default: github
+  name:
+    description: Artifact name.
+    required: true
+  path:
+    description: Download destination.
+    required: true
+  run-id:
+    description: Workflow run containing the artifact.
+    default: ""
+  s3-endpoint:
+    description: S3-compatible endpoint URL.
+    default: ""
+  s3-bucket:
+    description: S3 bucket.
+    default: ""
+  s3-access-key:
+    description: S3 access key.
+    default: ""
+  s3-secret-key:
+    description: S3 secret key.
+    default: ""
+  s3-session-token:
+    description: Optional S3 session token.
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Validate artifact backend
+      shell: bash
+      env:
+        BACKEND: ${{ inputs.backend }}
+      run: |
+        case "$BACKEND" in
+          github|s3) ;;
+          *) echo 'Artifact backend must be github or s3.' >&2; exit 1 ;;
+        esac
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      if: inputs.backend == 'github'
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ inputs.path }}
+        run-id: ${{ inputs.run-id || github.run_id }}
+    - uses: $/.github/actions/s3-artifact
+      if: inputs.backend == 's3'
+      with:
+        operation: download
+        endpoint: ${{ inputs.s3-endpoint }}
+        bucket: ${{ inputs.s3-bucket }}
+        access-key: ${{ inputs.s3-access-key }}
+        secret-key: ${{ inputs.s3-secret-key }}
+        session-token: ${{ inputs.s3-session-token }}
+        name: ${{ inputs.name }}
+        path: ${{ inputs.path }}
+        run-id: ${{ inputs.run-id || github.run_id }}

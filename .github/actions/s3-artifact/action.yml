@@ -1,0 +1,44 @@
+name: S3 artifact transfer
+description: Stream an artifact archive between the workspace and S3.
+
+inputs:
+  operation:
+    description: Transfer operation (upload or download).
+    required: true
+  endpoint:
+    description: S3-compatible endpoint URL.
+    required: true
+  bucket:
+    description: S3 bucket.
+    required: true
+  access-key:
+    description: S3 access key.
+    required: true
+  secret-key:
+    description: S3 secret key.
+    required: true
+  session-token:
+    description: Optional S3 session token.
+    default: ""
+  name:
+    description: Artifact name.
+    required: true
+  path:
+    description: Newline-separated upload paths or the download destination.
+    required: true
+  run-id:
+    description: Workflow run containing the artifact.
+    required: true
+  compression-level:
+    description: Zstandard compression level for uploads.
+    default: "3"
+
+outputs:
+  object-key:
+    description: S3 object key.
+  size:
+    description: Compressed object size in bytes after download.
+
+runs:
+  using: node24
+  main: dist/index.js
