@@ -50,6 +50,7 @@ jobs:
       - run: ./scripts/check-public-contract.sh
       - run: ./scripts/test-action-pin-check.sh
       - run: ./scripts/test-workflow-validation.sh
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
       - run: ./scripts/test-sccache-unreachable.sh
       - run: node scripts/test-s3-artifact-failure.cjs
 
@@ -70,7 +71,7 @@ jobs:
           node-version: "22"
       - run: node --test scripts/test-target-cache.cjs
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
         with:
           enable-cache: false
       - name: Build, save, delete, restore and test offline

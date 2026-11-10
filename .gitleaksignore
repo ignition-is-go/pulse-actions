@@ -1,5 +1,6 @@
-# Bundled upstream documentation example: apiToken = "abc123xyz456".
+# Bundled upstream documentation examples, including the explanatory comment.
 # Exact historical fingerprints retain scans of all other code and history.
 278a18c524d7d5cd93c461fcf4d4c9e08092e487:.github/actions/s3-target-cache/dist/post/index.js:generic-api-key:269
 278a18c524d7d5cd93c461fcf4d4c9e08092e487:.github/actions/s3-artifact/dist/index.js:generic-api-key:269
 278a18c524d7d5cd93c461fcf4d4c9e08092e487:.github/actions/s3-target-cache/dist/main/index.js:generic-api-key:269
+32630f39fb0d306590fc1dd6db8fc6a6af5bd200:.gitleaksignore:generic-api-key:1
