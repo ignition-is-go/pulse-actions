@@ -32,7 +32,12 @@ jobs:
             --output "$stage/gitleaks.tar.gz"
           echo "a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb  $stage/gitleaks.tar.gz" | sha256sum --check --strict
           tar -xzf "$stage/gitleaks.tar.gz" -C "$stage" gitleaks
-          "$stage/gitleaks" detect --source=. --no-banner --redact --log-opts=--all
+          status=0
+          "$stage/gitleaks" detect --source=. --no-banner --redact --log-opts=--all \
+            --gitleaks-ignore-path="$GITHUB_WORKSPACE/.gitleaksignore" \
+            --report-format=json --report-path="$stage/report.json" || status=$?
+          python3 -c 'import json,sys; [print({k:x.get(k) for k in ["File","StartLine","Commit","Fingerprint"]}) for x in json.load(open(sys.argv[1]))]' "$stage/report.json"
+          exit "$status"
 
   actionlint:
     name: actionlint
