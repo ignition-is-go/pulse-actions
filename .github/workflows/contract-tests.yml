@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-15, windows-2025]
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ fromJSON(matrix.os == 'ubuntu-24.04' && vars.CI_LINUX_RUNNER_JSON || matrix.os == 'windows-2025' && vars.CI_WINDOWS_RUNNER_JSON || vars.CI_MACOS_RUNNER_JSON) }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -39,14 +39,21 @@ jobs:
 
   public-contract:
     name: public contract
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_LINUX_RUNNER_JSON) }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+      - name: Install archive compression tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zstd
       - run: ./scripts/check-public-contract.sh
       - run: ./scripts/test-action-pin-check.sh
       - run: ./scripts/test-workflow-validation.sh
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
       - run: ./scripts/test-sccache-unreachable.sh
       - run: node scripts/test-s3-artifact-failure.cjs
 
@@ -56,16 +63,52 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-15, windows-2025]
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ fromJSON(matrix.os == 'ubuntu-24.04' && vars.CI_LINUX_RUNNER_JSON || matrix.os == 'windows-2025' && vars.CI_WINDOWS_RUNNER_JSON || vars.CI_MACOS_RUNNER_JSON) }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+      - name: Install archive compression tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zstd
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
+        if: runner.os == 'Windows'
+      - name: Configure Windows archive tools
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $gitRoot = Split-Path (Split-Path (Get-Command bash).Source -Parent) -Parent
+          $gitTools = Join-Path $gitRoot 'usr\bin'
+          if (-not (Test-Path (Join-Path $gitTools 'tar.exe'))) {
+            throw 'Git GNU tar is required by the archive contract.'
+          }
+          $directory = Join-Path $env:RUNNER_TEMP 'archive-tools'
+          New-Item -ItemType Directory -Path $directory | Out-Null
+          $zstd = (Get-Command zstd).Source
+          Copy-Item $zstd (Join-Path $directory 'zstdmt.exe')
+          Copy-Item $zstd (Join-Path $directory 'unzstd.exe')
+          $linker = Join-Path $env:VCToolsInstallDir 'bin\Hostx64\x64\link.exe'
+          if (-not (Test-Path $linker)) { throw 'MSVC linker is required by the Rust fixture.' }
+          $gitTools, $directory, (Split-Path $linker -Parent) | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - run: node --test scripts/test-target-cache.cjs
-      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
         with:
           enable-cache: false
+      - name: Verify Windows archive and linker selection
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $expected = Join-Path $env:VCToolsInstallDir 'bin\Hostx64\x64\link.exe'
+          $linker = (Get-Command link.exe).Source
+          $tar = (Get-Command tar.exe).Source
+          if ($linker -ne $expected) { throw "Unexpected linker: $linker" }
+          if ($tar -notmatch '[\\/]usr[\\/]bin[\\/]tar.exe$') { throw "Expected Git GNU tar: $tar" }
+          Write-Output "MSVC linker: $linker"
+          Write-Output "GNU tar: $tar"
       - name: Build, save, delete, restore and test offline
         run: uv run scripts/test-s3-target-cache.py
