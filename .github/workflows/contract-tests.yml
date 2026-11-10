@@ -91,14 +91,24 @@ jobs:
           $zstd = (Get-Command zstd).Source
           Copy-Item $zstd (Join-Path $directory 'zstdmt.exe')
           Copy-Item $zstd (Join-Path $directory 'unzstd.exe')
-          $gitTools, $directory | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           $linker = Join-Path $env:VCToolsInstallDir 'bin\Hostx64\x64\link.exe'
           if (-not (Test-Path $linker)) { throw 'MSVC linker is required by the Rust fixture.' }
-          "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=$linker" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $gitTools, $directory, (Split-Path $linker -Parent) | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - run: node --test scripts/test-target-cache.cjs
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
         with:
           enable-cache: false
+      - name: Verify Windows archive and linker selection
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $expected = Join-Path $env:VCToolsInstallDir 'bin\Hostx64\x64\link.exe'
+          $linker = (Get-Command link.exe).Source
+          $tar = (Get-Command tar.exe).Source
+          if ($linker -ne $expected) { throw "Unexpected linker: $linker" }
+          if ($tar -notmatch '[\\/]usr[\\/]bin[\\/]tar.exe$') { throw "Expected Git GNU tar: $tar" }
+          Write-Output "MSVC linker: $linker"
+          Write-Output "GNU tar: $tar"
       - name: Build, save, delete, restore and test offline
         run: uv run scripts/test-s3-target-cache.py
