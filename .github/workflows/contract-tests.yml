@@ -75,6 +75,21 @@ jobs:
       - name: Install archive compression tools
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y zstd
+      - name: Configure Windows archive tools
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $gitRoot = Split-Path (Split-Path (Get-Command bash).Source -Parent) -Parent
+          $gitTools = Join-Path $gitRoot 'usr\bin'
+          if (-not (Test-Path (Join-Path $gitTools 'tar.exe'))) {
+            throw 'Git GNU tar is required by the archive contract.'
+          }
+          $directory = Join-Path $env:RUNNER_TEMP 'archive-tools'
+          New-Item -ItemType Directory -Path $directory | Out-Null
+          $zstd = (Get-Command zstd).Source
+          Copy-Item $zstd (Join-Path $directory 'zstdmt.exe')
+          Copy-Item $zstd (Join-Path $directory 'unzstd.exe')
+          $gitTools, $directory | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - run: node --test scripts/test-target-cache.cjs
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
