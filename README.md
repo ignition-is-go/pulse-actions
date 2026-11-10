@@ -21,7 +21,7 @@ jobs:
   check:
     uses: ignition-is-go/pulse-actions/.github/workflows/rust-quality.yml@v1.1.0
     with:
-      runner-json: '"ubuntu-24.04"'
+      runner-json: ${{ vars.CI_LINUX_RUNNER_JSON }}
     secrets:
       CI_CACHE_ENDPOINT: ${{ secrets.CI_CACHE_ENDPOINT }}
       CI_CACHE_BUCKET: ${{ secrets.CI_CACHE_BUCKET }}
@@ -99,3 +99,14 @@ Run `node --test scripts/test-target-cache.cjs` for configuration tests. Run `uv
 ## Workflow artifact storage
 
 `actions/upload-artifact` and `actions/download-artifact` route artifacts through GitHub by default. Set `backend: s3` and provide the `s3-*` endpoint, bucket, and credential inputs to stream Linux artifacts through S3 instead. S3 uploads accept literal workspace-relative paths and preserve that layout beneath the download destination. Objects use the `rust/v1/artifacts/` prefix and the workflow run ID, so the existing `rust/v1/*` cache policy and lifecycle rules cover them.
+
+## Repository CI runners
+
+Maintainers configure `CI_LINUX_RUNNER_JSON`, `CI_MACOS_RUNNER_JSON`, and
+`CI_WINDOWS_RUNNER_JSON` as repository variables containing self-hosted runner
+selector arrays. Include the platform, architecture, and required capacity
+labels for your fleet. The CI test matrix keeps its existing display names;
+these variables determine where each job runs. There is no hosted-runner fallback.
+
+These settings apply to this repository’s own CI. Reusable-workflow callers
+continue to provide their runner selections explicitly.

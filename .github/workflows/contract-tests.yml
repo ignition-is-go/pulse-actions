@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-15, windows-2025]
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ fromJSON(matrix.os == 'ubuntu-24.04' && vars.CI_LINUX_RUNNER_JSON || matrix.os == 'windows-2025' && vars.CI_WINDOWS_RUNNER_JSON || vars.CI_MACOS_RUNNER_JSON) }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -39,7 +39,7 @@ jobs:
 
   public-contract:
     name: public contract
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_LINUX_RUNNER_JSON) }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
@@ -56,7 +56,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-15, windows-2025]
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ fromJSON(matrix.os == 'ubuntu-24.04' && vars.CI_LINUX_RUNNER_JSON || matrix.os == 'windows-2025' && vars.CI_WINDOWS_RUNNER_JSON || vars.CI_MACOS_RUNNER_JSON) }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
