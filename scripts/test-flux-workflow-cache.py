@@ -18,7 +18,7 @@ class FluxWorkflowCacheTest(unittest.TestCase):
 
     def test_native_cache_follows_existing_s3_selection_and_credentials(self):
         inputs = self.setup['with']
-        self.assertEqual(inputs['cache'], "${{ inputs.cache-target-backend == 's3' && 's3' || '' }}")
+        self.assertEqual(inputs['cache'], "${{ (inputs.cache-target-backend == 's3' || inputs.cache-target-backend == 'flux-s3') && 's3' || '' }}")
         for action_input, secret in [('cache-endpoint', 'CI_CACHE_ENDPOINT'), ('cache-bucket', 'CI_CACHE_BUCKET'), ('cache-access-key-id', 'CI_CACHE_ACCESS_KEY'), ('cache-secret-access-key', 'CI_CACHE_SECRET_KEY'), ('cache-session-token', 'CI_CACHE_SESSION_TOKEN')]:
             self.assertIn('secrets.' + secret, inputs[action_input])
         self.assertFalse(any(k.startswith('AWS_') for k in self.setup.get('env', {})))
@@ -27,7 +27,8 @@ class FluxWorkflowCacheTest(unittest.TestCase):
 
     def test_native_snapshots_replace_custom_target_transfers_and_clean_after_tasks(self):
         rust = next(s for s in self.steps if s.get('uses') == '$/actions/setup-rust')
-        self.assertEqual(rust['with']['cache-targets'], "${{ inputs.cache-target-backend != 's3' }}")
+        self.assertEqual(rust['with']['cache-targets'], "${{ inputs.cache-target-backend != 'flux-s3' }}")
+        self.assertEqual(rust['with']['cache-target-backend'], "${{ inputs.cache-target-backend == 'flux-s3' && 's3' || inputs.cache-target-backend }}")
         restore = next(s for s in self.steps if s.get('id') == 'flux-target-cache')
         save = next(s for s in self.steps if s.get('name') == 'Save native Flux snapshot and clean local targets')
         tasks = next(s for s in self.steps if s.get('name') == 'Run Cargo Flux tasks')
