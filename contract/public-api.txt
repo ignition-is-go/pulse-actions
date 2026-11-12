@@ -6,3 +6,4 @@ actions/upload-artifact/action.yml
 .github/workflows/rust-native-build.yml
 .github/workflows/rust-quality.yml
 .github/workflows/validate-workflows.yml
+actions/flux-target-cache/action.yml

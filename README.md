@@ -144,3 +144,17 @@ task caching still requires task output declarations in `flux.toml`.
 Existing `github` and `s3` backend selections keep their snapshot-transfer
 behavior. Select `flux-s3` explicitly when adopting native Flux snapshots and
 add the S3 configuration above; no existing caller is forced to migrate.
+
+### Native compiler snapshots in custom jobs
+
+`actions/flux-target-cache` restores native Flux snapshots and, after a successful
+save, removes their local target directories. Set up Cargo Flux with its S3 client
+and provide `[cache.s3]` in `flux.toml` first. Pass `operation: restore`, retain the
+returned `state`, then call `operation: save` with that state after tests and
+artifact uploads succeed. Failed uploads retain local outputs.
+
+Use a distinct `scope` for parallel jobs or incompatible build profiles. Restore
+tries that scope on the current ref, then the same scope on the default branch;
+parallel jobs cannot overwrite one another's snapshots. Cargo target directories
+must be inside the checkout. For multiple Cargo workspaces in one job, set
+`CARGO_TARGET_DIR` to a shared directory inside that checkout.

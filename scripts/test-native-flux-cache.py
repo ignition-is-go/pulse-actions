@@ -50,7 +50,9 @@ def main():
             for args in [['git', 'init', '-q'], ['git', 'add', '.']]:
                 run(args, root, env)
             adapter = [sys.executable, str(ROOT / 'actions/setup-rust/flux-target-cache.py')]
+            env['FLUX_CACHE_SCOPE'] = 'engine'
             run(adapter + ['restore'], root, env)
+            engine_key = json.loads(Path(output.read_text().strip().split('=', 1)[1]).read_text())['key']
             env['FLUX_CACHE_STATE'] = output.read_text().strip().split('=', 1)[1]
             run(['cargo', 'test', '--offline'], root, env)
             (root / 'dist').mkdir()
@@ -65,11 +67,18 @@ def main():
             objects = s3.list_objects_v2(Bucket='flux-ci-fixture').get('Contents', [])
             assert objects and all(o['Key'].startswith('rust/v1/flux/fixture/') for o in objects)
             output.write_text('')
+            env['FLUX_CACHE_SCOPE'] = 'ui'
+            run(adapter + ['restore'], root, env)
+            ui_state = json.loads(Path(output.read_text().strip().split('=', 1)[1]).read_text())
+            assert ui_state['key'] != engine_key, 'parallel jobs share a writable snapshot key'
+            assert not (root / 'out').exists(), 'UI restored an incompatible engine snapshot'
+            output.write_text('')
+            env['FLUX_CACHE_SCOPE'] = 'engine'
             env['GITHUB_REF'] = 'refs/heads/feature'
             run(adapter + ['restore'], root, env)
             assert (root / 'out').is_dir(), 'native S3 snapshot was not restored'
             run(['cargo', 'test', '--offline'], root, env)
-            print('PASS: native S3 miss/build, failed-save retention, successful-save cleanup, artifact preservation, restore and offline test')
+            print('PASS: native S3 miss/build, failed-save retention, successful-save cleanup, artifact preservation, job isolation, scoped main fallback and offline test')
     finally:
         server.stop()
 
