@@ -37,6 +37,14 @@ class FluxWorkflowCacheTest(unittest.TestCase):
         self.assertIn('success()', save['if'])
         self.assertEqual(save['with']['state'], '${{ steps.flux-target-cache.outputs.state }}')
 
+    def test_s3_preparation_installs_its_node_runtime(self):
+        action = yaml.safe_load((ROOT / 'actions/setup-rust/action.yml').read_text())
+        steps = action['runs']['steps']
+        node = next(s for s in steps if s.get('uses', '').startswith('actions/setup-node@'))
+        prepare = next(s for s in steps if s.get('name') == 'Prepare S3 caches')
+        self.assertEqual(node['if'], prepare['if'])
+        self.assertLess(steps.index(node), steps.index(prepare))
+
     def test_native_adapter_enforces_linux_workflow_boundary(self):
         action = yaml.safe_load((ROOT / '.github/actions/flux-target-cache/action.yml').read_text())
         self.assertIn('"$RUNNER_OS" != Linux', action['runs']['steps'][0]['run'])

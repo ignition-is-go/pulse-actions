@@ -203,6 +203,11 @@ runs:
           ${{ steps.cargo-home-unix.outputs.path || steps.cargo-home-windows.outputs.path }}/git/db
         key: ${{ github.repository }}-${{ runner.os }}-${{ runner.arch }}-cargo-registry-${{ inputs.toolchain }}-${{ inputs.cache-shared-key }}-${{ steps.lockfile.outputs.hash }}-v1
 
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      if: inputs.cache-target-backend == 's3'
+      with:
+        node-version: "22"
+
     - name: Prepare S3 caches
       if: inputs.cache-target-backend == 's3'
       id: s3-target-config
