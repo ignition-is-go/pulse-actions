@@ -25,6 +25,17 @@ class FluxWorkflowCacheTest(unittest.TestCase):
         run = next(s for s in self.steps if s.get('name') == 'Run Cargo Flux tasks')
         self.assertLess(self.steps.index(self.setup), self.steps.index(run))
 
+    def test_native_snapshots_replace_custom_target_transfers_and_clean_after_tasks(self):
+        rust = next(s for s in self.steps if s.get('uses') == '$/actions/setup-rust')
+        self.assertEqual(rust['with']['cache-targets'], "${{ inputs.cache-target-backend != 's3' }}")
+        restore = next(s for s in self.steps if s.get('id') == 'flux-target-cache')
+        save = next(s for s in self.steps if s.get('name') == 'Save native Flux snapshot and clean local targets')
+        tasks = next(s for s in self.steps if s.get('name') == 'Run Cargo Flux tasks')
+        self.assertLess(self.steps.index(restore), self.steps.index(tasks))
+        self.assertLess(self.steps.index(tasks), self.steps.index(save))
+        self.assertIn('success()', save['if'])
+        self.assertEqual(save['with']['state'], '${{ steps.flux-target-cache.outputs.state }}')
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -132,6 +132,11 @@ prefix = "rust/v1/flux"
 Keep the prefix inside the namespace authorized for the supplied cache identity.
 The example uses a separate Flux subtree under the existing Rust cache namespace.
 
-Task caching and the existing whole-target snapshot cache are distinct. This
-setup enables native task caching; it does not replace snapshot transfers or
-make undeclared tasks cacheable.
+With S3 selected, `cargo-flux-quality.yml` disables the custom whole-target
+snapshot transfer. Flux restores compiler snapshots before tasks and saves them
+with `storage save` after tasks succeed. Source timestamps are restored only for
+matching files. Snapshots are isolated by repository, branch, toolchain and build
+flags, with a default-branch fallback. Successful uploads are followed by local
+target cleanup; failed uploads retain local outputs. The workflow needs the S3
+configuration above and checkout-local Cargo target/build directories. Individual
+task caching still requires task output declarations in `flux.toml`.

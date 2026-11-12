@@ -27,11 +27,11 @@ on:
         type: string
         default: github
       cache-s3-transfer:
-        description: S3 target-cache transfer mode (staged or streaming). Streaming requires Linux.
+        description: Legacy setup-rust transfer setting; native Flux snapshots use Flux streaming.
         type: string
         default: staged
       cache-zstd-level:
-        description: S3 target-cache zstd compression level (1 through 19).
+        description: Legacy setup-rust compression setting; native snapshots use Flux configuration.
         type: string
         default: "3"
       compiler-cache-auth:
@@ -78,6 +78,7 @@ jobs:
       - uses: $/actions/report-resources
       - uses: $/actions/setup-rust
         with:
+          cache-targets: ${{ inputs.cache-target-backend != 's3' }}
           toolchain: ${{ inputs.toolchain }}
           cache-target-backend: ${{ inputs.cache-target-backend }}
           cache-s3-transfer: ${{ inputs.cache-s3-transfer }}
@@ -102,6 +103,16 @@ jobs:
           cache-access-key-id: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_ACCESS_KEY || '' }}
           cache-secret-access-key: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SECRET_KEY || '' }}
           cache-session-token: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SESSION_TOKEN || '' }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        if: inputs.cache-target-backend == 's3'
+        with:
+          python-version: '3.12'
+      - name: Restore native Flux compiler snapshot
+        if: inputs.cache-target-backend == 's3'
+        id: flux-target-cache
+        uses: $/.github/actions/flux-target-cache
+        with:
+          operation: restore
       - name: Run Cargo Flux tasks
         env:
           FLUX_TASKS: ${{ inputs.tasks }}
@@ -109,5 +120,11 @@ jobs:
           for task in $FLUX_TASKS; do
             cargo flux run "$task"
           done
+      - name: Save native Flux snapshot and clean local targets
+        if: success() && inputs.cache-target-backend == 's3'
+        uses: $/.github/actions/flux-target-cache
+        with:
+          operation: save
+          state: ${{ steps.flux-target-cache.outputs.state }}
       - uses: $/actions/report-resources
         if: always()

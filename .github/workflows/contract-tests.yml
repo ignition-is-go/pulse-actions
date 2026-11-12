@@ -110,6 +110,9 @@ jobs:
           if ($tar -notmatch '[\\/]usr[\\/]bin[\\/]tar.exe$') { throw "Expected Git GNU tar: $tar" }
           Write-Output "MSVC linker: $linker"
           Write-Output "GNU tar: $tar"
+      - uses: ignition-is-go/cargo-flux@eecab76c2c1296cb7e9e5b8d8d72149e49282fb4 # v0.11.7
       - run: uv run --with pyyaml python scripts/test-flux-workflow-cache.py
+      - name: Exercise native Flux upload, cleanup and restore
+        run: uv run scripts/test-native-flux-cache.py
       - name: Build, save, delete, restore and test offline
         run: uv run scripts/test-s3-target-cache.py
