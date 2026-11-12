@@ -110,5 +110,6 @@ jobs:
           if ($tar -notmatch '[\\/]usr[\\/]bin[\\/]tar.exe$') { throw "Expected Git GNU tar: $tar" }
           Write-Output "MSVC linker: $linker"
           Write-Output "GNU tar: $tar"
+      - run: uv run --with pyyaml python scripts/test-flux-workflow-cache.py
       - name: Build, save, delete, restore and test offline
         run: uv run scripts/test-s3-target-cache.py

@@ -115,3 +115,20 @@ After successful jobs, `setup-rust` removes checkout-local Cargo target/build
 directories after cache upload post steps finish. Failed jobs and targets outside
 the checkout are preserved. This applies when target caching is enabled. Publish
 or stage artifacts during the job before finalization.
+
+The shared `cargo-flux-quality.yml` workflow also configures Cargo Flux's native
+S3 client when `cache-target-backend: s3` is selected. It reuses the existing
+`CI_CACHE_*` inputs/secrets and exports dedicated `CARGO_FLUX_S3_*` settings;
+job-wide AWS credentials are unchanged. The caller-selected Flux version is
+preserved. Configure cacheable tasks in the repository's `flux.toml`, including:
+
+```toml
+[cache.s3]
+endpoint_env = "CARGO_FLUX_S3_ENDPOINT"
+bucket_env = "CARGO_FLUX_S3_BUCKET"
+prefix = "cargo-flux/v1"
+```
+
+Task caching and the existing whole-target snapshot cache are distinct. This
+setup enables native task caching; it does not replace snapshot transfers or
+make undeclared tasks cacheable.

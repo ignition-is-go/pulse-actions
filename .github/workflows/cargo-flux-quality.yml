@@ -92,10 +92,16 @@ jobs:
           compiler-cache-access-key: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_ACCESS_KEY || '' }}
           compiler-cache-secret-key: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SECRET_KEY || '' }}
           compiler-cache-session-token: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SESSION_TOKEN || '' }}
-      - name: Install Cargo Flux
-        env:
-          CARGO_FLUX_VERSION: ${{ inputs.cargo-flux-version }}
-        run: cargo install cargo-flux --version "$CARGO_FLUX_VERSION" --locked
+      - name: Set up Cargo Flux and its native S3 client
+        uses: ignition-is-go/cargo-flux@eecab76c2c1296cb7e9e5b8d8d72149e49282fb4 # v0.11.7
+        with:
+          version: ${{ inputs.cargo-flux-version }}
+          cache: ${{ inputs.cache-target-backend == 's3' && 's3' || '' }}
+          cache-endpoint: ${{ inputs.compiler-cache-endpoint || secrets.CI_CACHE_ENDPOINT }}
+          cache-bucket: ${{ inputs.compiler-cache-bucket || secrets.CI_CACHE_BUCKET }}
+          cache-access-key-id: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_ACCESS_KEY || '' }}
+          cache-secret-access-key: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SECRET_KEY || '' }}
+          cache-session-token: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SESSION_TOKEN || '' }}
       - name: Run Cargo Flux tasks
         env:
           FLUX_TASKS: ${{ inputs.tasks }}
