@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Next major
+
+- Remove checkout-local Cargo target/build directories after successful cache saves.
+- Add explicit native Flux S3 snapshots to the shared Linux Flux workflow through `flux-s3`.
+
 - Fall back to direct compilation when the local sccache server or remote backend becomes unavailable.
 - Let callers preserve conditional GitHub Cargo cache writes during migration.
 

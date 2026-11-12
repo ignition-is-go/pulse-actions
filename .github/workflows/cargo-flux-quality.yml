@@ -23,15 +23,15 @@ on:
         type: number
         default: 45
       cache-target-backend:
-        description: Cargo cache backend (github or s3). S3 requires static compiler-cache credentials.
+        description: Cargo cache backend (github, s3, or flux-s3). flux-s3 uses native Flux snapshots and requires [cache.s3].
         type: string
         default: github
       cache-s3-transfer:
-        description: S3 target-cache transfer mode (staged or streaming). Streaming requires Linux.
+        description: Legacy setup-rust transfer setting; native Flux snapshots use Flux streaming.
         type: string
         default: staged
       cache-zstd-level:
-        description: S3 target-cache zstd compression level (1 through 19).
+        description: Legacy setup-rust compression setting; native snapshots use Flux configuration.
         type: string
         default: "3"
       compiler-cache-auth:
@@ -78,8 +78,9 @@ jobs:
       - uses: $/actions/report-resources
       - uses: $/actions/setup-rust
         with:
+          cache-targets: ${{ inputs.cache-target-backend != 'flux-s3' }}
           toolchain: ${{ inputs.toolchain }}
-          cache-target-backend: ${{ inputs.cache-target-backend }}
+          cache-target-backend: ${{ inputs.cache-target-backend == 'flux-s3' && 's3' || inputs.cache-target-backend }}
           cache-s3-transfer: ${{ inputs.cache-s3-transfer }}
           cache-zstd-level: ${{ inputs.cache-zstd-level }}
           components: clippy
@@ -92,10 +93,26 @@ jobs:
           compiler-cache-access-key: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_ACCESS_KEY || '' }}
           compiler-cache-secret-key: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SECRET_KEY || '' }}
           compiler-cache-session-token: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SESSION_TOKEN || '' }}
-      - name: Install Cargo Flux
-        env:
-          CARGO_FLUX_VERSION: ${{ inputs.cargo-flux-version }}
-        run: cargo install cargo-flux --version "$CARGO_FLUX_VERSION" --locked
+      - name: Set up Cargo Flux and its native S3 client
+        uses: ignition-is-go/cargo-flux@eecab76c2c1296cb7e9e5b8d8d72149e49282fb4 # v0.11.7
+        with:
+          version: ${{ inputs.cargo-flux-version }}
+          cache: ${{ (inputs.cache-target-backend == 's3' || inputs.cache-target-backend == 'flux-s3') && 's3' || '' }}
+          cache-endpoint: ${{ inputs.compiler-cache-endpoint || secrets.CI_CACHE_ENDPOINT }}
+          cache-bucket: ${{ inputs.compiler-cache-bucket || secrets.CI_CACHE_BUCKET }}
+          cache-access-key-id: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_ACCESS_KEY || '' }}
+          cache-secret-access-key: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SECRET_KEY || '' }}
+          cache-session-token: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SESSION_TOKEN || '' }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        if: inputs.cache-target-backend == 'flux-s3'
+        with:
+          python-version: '3.12'
+      - name: Restore native Flux compiler snapshot
+        if: inputs.cache-target-backend == 'flux-s3'
+        id: flux-target-cache
+        uses: $/.github/actions/flux-target-cache
+        with:
+          operation: restore
       - name: Run Cargo Flux tasks
         env:
           FLUX_TASKS: ${{ inputs.tasks }}
@@ -103,5 +120,11 @@ jobs:
           for task in $FLUX_TASKS; do
             cargo flux run "$task"
           done
+      - name: Save native Flux snapshot and clean local targets
+        if: success() && inputs.cache-target-backend == 'flux-s3'
+        uses: $/.github/actions/flux-target-cache
+        with:
+          operation: save
+          state: ${{ steps.flux-target-cache.outputs.state }}
       - uses: $/actions/report-resources
         if: always()

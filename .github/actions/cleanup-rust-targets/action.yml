@@ -1,0 +1,11 @@
+name: Clean local Rust targets after cache uploads
+description: Remove checkout-local Cargo build outputs after a successful job and cache post steps.
+inputs:
+  workspaces:
+    description: Workspace mapping used by setup-rust caching.
+    default: .
+runs:
+  using: node24
+  main: main.cjs
+  post: post.cjs
+  post-if: success()

@@ -1,0 +1,28 @@
+name: Native Flux compiler snapshot
+description: Linux native Flux snapshots; clean local targets after a successful save.
+inputs:
+  operation:
+    description: restore or save
+    required: true
+  state:
+    description: State returned by restore, required for save.
+    default: ''
+outputs:
+  state:
+    description: Snapshot state for the save step.
+    value: ${{ steps.cache.outputs.state }}
+runs:
+  using: composite
+  steps:
+    - name: Transfer compiler snapshot
+      id: cache
+      shell: bash
+      env:
+        OPERATION: ${{ inputs.operation }}
+        FLUX_CACHE_STATE: ${{ inputs.state }}
+      run: |
+        if [[ "$RUNNER_OS" != Linux ]]; then
+          echo 'Native Flux snapshots in this workflow require Linux.' >&2
+          exit 1
+        fi
+        python3 "$GITHUB_ACTION_PATH/../../../actions/setup-rust/flux-target-cache.py" "$OPERATION"

@@ -7,26 +7,7 @@ function hash(value) {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 32);
 }
 
-function prepare(env, run = (program, args, cwd) =>
-  execFileSync(program, args, { cwd, encoding: 'utf8' }).trim()) {
-  for (const field of ['CACHE_AUTH', 'CACHE_ENDPOINT', 'CACHE_BUCKET',
-    'CACHE_ACCESS_KEY', 'CACHE_SECRET_KEY', 'CACHE_SESSION_TOKEN']) {
-    if (/[\r\n]/.test(env[field] || '')) throw new Error(`${field} must be single-line.`);
-  }
-  if (env.CACHE_AUTH !== 'static') {
-    throw new Error('S3 target caching requires static compiler-cache authentication.');
-  }
-  for (const field of ['CACHE_ENDPOINT', 'CACHE_BUCKET', 'CACHE_ACCESS_KEY', 'CACHE_SECRET_KEY']) {
-    if (!env[field]) throw new Error(`S3 target caching requires ${field}.`);
-  }
-  let endpoint;
-  try { endpoint = new URL(env.CACHE_ENDPOINT); }
-  catch { throw new Error('S3 target cache endpoint must be an HTTP(S) origin.'); }
-  if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username ||
-      endpoint.password || endpoint.pathname !== '/' || endpoint.search || endpoint.hash) {
-    throw new Error('S3 target cache endpoint must be an HTTP(S) origin without credentials or a path.');
-  }
-
+function targetPaths(env, run) {
   const root = env.GITHUB_WORKSPACE;
   const workspaces = (env.CACHE_WORKSPACES || '.').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
   const paths = [];
@@ -54,6 +35,31 @@ function prepare(env, run = (program, args, cwd) =>
   }
   if (!paths.length) throw new Error('At least one cache workspace is required.');
   const uniquePaths = [...new Set(paths)];
+  return uniquePaths;
+}
+
+function prepare(env, run = (program, args, cwd) =>
+  execFileSync(program, args, { cwd, encoding: 'utf8' }).trim()) {
+  for (const field of ['CACHE_AUTH', 'CACHE_ENDPOINT', 'CACHE_BUCKET',
+    'CACHE_ACCESS_KEY', 'CACHE_SECRET_KEY', 'CACHE_SESSION_TOKEN']) {
+    if (/[\r\n]/.test(env[field] || '')) throw new Error(`${field} must be single-line.`);
+  }
+  if (env.CACHE_AUTH !== 'static') {
+    throw new Error('S3 target caching requires static compiler-cache authentication.');
+  }
+  for (const field of ['CACHE_ENDPOINT', 'CACHE_BUCKET', 'CACHE_ACCESS_KEY', 'CACHE_SECRET_KEY']) {
+    if (!env[field]) throw new Error(`S3 target caching requires ${field}.`);
+  }
+  let endpoint;
+  try { endpoint = new URL(env.CACHE_ENDPOINT); }
+  catch { throw new Error('S3 target cache endpoint must be an HTTP(S) origin.'); }
+  if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username ||
+      endpoint.password || endpoint.pathname !== '/' || endpoint.search || endpoint.hash) {
+    throw new Error('S3 target cache endpoint must be an HTTP(S) origin without credentials or a path.');
+  }
+
+  const root = env.GITHUB_WORKSPACE;
+  const uniquePaths = targetPaths(env, run);
   const compiler = run('rustc', ['--version', '--verbose'], root);
   const revision = run('git', ['rev-parse', 'HEAD'], root);
   const buildEnv = Object.entries(env).filter(([name]) =>
@@ -108,4 +114,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { prepare };
+module.exports = { prepare, targetPaths };

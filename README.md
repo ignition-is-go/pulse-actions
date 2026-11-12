@@ -1,6 +1,6 @@
 # pulse-actions
 
-Reusable, read-only Rust CI building blocks.
+Reusable Rust CI building blocks.
 
 The v1 contract exports two composite actions and four reusable workflows:
 
@@ -110,3 +110,37 @@ these variables determine where each job runs. There is no hosted-runner fallbac
 
 These settings apply to this repository’s own CI. Reusable-workflow callers
 continue to provide their runner selections explicitly.
+
+After successful jobs, `setup-rust` removes checkout-local Cargo target/build
+directories after cache upload post steps finish. Failed jobs and targets outside
+the checkout are preserved. This applies when target caching is enabled. Publish
+or stage artifacts during the job before finalization.
+
+The shared `cargo-flux-quality.yml` workflow also configures Cargo Flux's native
+S3 client when `cache-target-backend: s3` or `flux-s3` is selected. It reuses the existing
+`CI_CACHE_*` inputs/secrets and exports dedicated `CARGO_FLUX_S3_*` settings;
+job-wide AWS credentials are unchanged. The caller-selected Flux version is
+preserved. Configure cacheable tasks in the repository's `flux.toml`, including:
+
+```toml
+[cache.s3]
+endpoint_env = "CARGO_FLUX_S3_ENDPOINT"
+bucket_env = "CARGO_FLUX_S3_BUCKET"
+prefix = "rust/v1/flux"
+```
+
+Keep the prefix inside the namespace authorized for the supplied cache identity.
+The example uses a separate Flux subtree under the existing Rust cache namespace.
+
+With `cache-target-backend: flux-s3` selected, `cargo-flux-quality.yml` disables the custom whole-target
+snapshot transfer. Flux restores compiler snapshots before tasks and saves them
+with `storage save` after tasks succeed. Source timestamps are restored only for
+matching files. Snapshots are isolated by repository, branch, toolchain and build
+flags, with a default-branch fallback. Successful uploads are followed by local
+target cleanup; failed uploads retain local outputs. The Linux workflow needs the S3
+configuration above and checkout-local Cargo target/build directories. Individual
+task caching still requires task output declarations in `flux.toml`.
+
+Existing `github` and `s3` backend selections keep their snapshot-transfer
+behavior. Select `flux-s3` explicitly when adopting native Flux snapshots and
+add the S3 configuration above; no existing caller is forced to migrate.
