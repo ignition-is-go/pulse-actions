@@ -42,3 +42,16 @@ With S3 enabled, `rust-cache-hit` and `offline` require both the target archive 
 ## Artifact backend
 
 `actions/upload-artifact` and `actions/download-artifact` accept `github` or `s3` through the `backend` input and default to `github`. S3 artifact transfers support Linux, preserve workspace-relative paths, and use `rust/v1/artifacts/<repository>/<run>/<name>.tzst` objects. S3 retention is controlled by bucket lifecycle policy. Paths are literal; glob patterns are rejected.
+
+## Next-major target cleanup and native Flux snapshots
+
+The unreleased target-cleanup change requires a new major release: successful
+jobs remove checkout-local Cargo target/build outputs after cache saves. Publish
+or stage deliverables during the job. Failed jobs and shared/external targets
+are preserved. Existing immutable v1 pins keep their original cache lifetime.
+
+`cargo-flux-quality.yml` additionally accepts `cache-target-backend: flux-s3`
+for native Flux snapshots on its existing Linux runner surface. This requires
+`[cache.s3]` in `flux.toml`. Existing `github` and `s3` selections retain their
+transfer providers. Native upload failures preserve local outputs. Native Flux
+snapshot support on Windows is not part of this workflow's contract.

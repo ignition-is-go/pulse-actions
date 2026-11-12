@@ -37,6 +37,10 @@ class FluxWorkflowCacheTest(unittest.TestCase):
         self.assertIn('success()', save['if'])
         self.assertEqual(save['with']['state'], '${{ steps.flux-target-cache.outputs.state }}')
 
+    def test_native_adapter_enforces_linux_workflow_boundary(self):
+        action = yaml.safe_load((ROOT / '.github/actions/flux-target-cache/action.yml').read_text())
+        self.assertIn('"$RUNNER_OS" != Linux', action['runs']['steps'][0]['run'])
+
 
 if __name__ == '__main__':
     unittest.main()

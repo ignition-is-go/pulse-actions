@@ -137,7 +137,7 @@ snapshot transfer. Flux restores compiler snapshots before tasks and saves them
 with `storage save` after tasks succeed. Source timestamps are restored only for
 matching files. Snapshots are isolated by repository, branch, toolchain and build
 flags, with a default-branch fallback. Successful uploads are followed by local
-target cleanup; failed uploads retain local outputs. The workflow needs the S3
+target cleanup; failed uploads retain local outputs. The Linux workflow needs the S3
 configuration above and checkout-local Cargo target/build directories. Individual
 task caching still requires task output declarations in `flux.toml`.
 

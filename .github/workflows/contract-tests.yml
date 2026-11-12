@@ -70,6 +70,7 @@ jobs:
         with:
           persist-credentials: false
       - uses: ignition-is-go/cargo-flux@eecab76c2c1296cb7e9e5b8d8d72149e49282fb4 # v0.11.7
+        if: runner.os == 'Linux'
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
@@ -113,6 +114,7 @@ jobs:
           Write-Output "GNU tar: $tar"
       - run: uv run --with pyyaml python scripts/test-flux-workflow-cache.py
       - name: Exercise native Flux upload, cleanup and restore
+        if: runner.os == 'Linux'
         run: uv run scripts/test-native-flux-cache.py
       - name: Build, save, delete, restore and test offline
         run: uv run scripts/test-s3-target-cache.py
