@@ -4,6 +4,9 @@ inputs:
   operation:
     description: restore or save
     required: true
+  scope:
+    description: Isolate parallel jobs or incompatible build profiles within a repository.
+    default: ''
   state:
     description: State returned by restore, required for save.
     default: ''
@@ -19,10 +22,11 @@ runs:
       shell: bash
       env:
         OPERATION: ${{ inputs.operation }}
+        FLUX_CACHE_SCOPE: ${{ inputs.scope }}
         FLUX_CACHE_STATE: ${{ inputs.state }}
       run: |
         if [[ "$RUNNER_OS" != Linux ]]; then
           echo 'Native Flux snapshots in this workflow require Linux.' >&2
           exit 1
         fi
-        python3 "$GITHUB_ACTION_PATH/../../../actions/setup-rust/flux-target-cache.py" "$OPERATION"
+        python3 "$GITHUB_ACTION_PATH/../setup-rust/flux-target-cache.py" "$OPERATION"

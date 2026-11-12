@@ -46,7 +46,7 @@ class FluxWorkflowCacheTest(unittest.TestCase):
         self.assertLess(steps.index(node), steps.index(prepare))
 
     def test_native_adapter_enforces_linux_workflow_boundary(self):
-        action = yaml.safe_load((ROOT / '.github/actions/flux-target-cache/action.yml').read_text())
+        action = yaml.safe_load((ROOT / 'actions/flux-target-cache/action.yml').read_text())
         self.assertIn('"$RUNNER_OS" != Linux', action['runs']['steps'][0]['run'])
 
 

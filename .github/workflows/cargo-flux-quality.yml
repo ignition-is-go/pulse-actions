@@ -110,7 +110,7 @@ jobs:
       - name: Restore native Flux compiler snapshot
         if: inputs.cache-target-backend == 'flux-s3'
         id: flux-target-cache
-        uses: $/.github/actions/flux-target-cache
+        uses: $/actions/flux-target-cache
         with:
           operation: restore
       - name: Run Cargo Flux tasks
@@ -122,7 +122,7 @@ jobs:
           done
       - name: Save native Flux snapshot and clean local targets
         if: success() && inputs.cache-target-backend == 'flux-s3'
-        uses: $/.github/actions/flux-target-cache
+        uses: $/actions/flux-target-cache
         with:
           operation: save
           state: ${{ steps.flux-target-cache.outputs.state }}

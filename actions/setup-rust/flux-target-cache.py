@@ -32,8 +32,10 @@ def restore():
     repo = os.environ['GITHUB_REPOSITORY']
     ref = os.environ['GITHUB_REF']
     default_ref = 'refs/heads/' + event['repository']['default_branch']
-    key = command(flux, 'storage', 'cargo-key', '--scope', f'{repo}:{ref}', capture=True).strip()
-    fallback = command(flux, 'storage', 'cargo-key', '--scope', f'{repo}:{default_ref}', capture=True).strip()
+    scope = os.environ.get('FLUX_CACHE_SCOPE', '')
+    suffix = ':' + scope if scope else ''
+    key = command(flux, 'storage', 'cargo-key', '--scope', f'{repo}:{ref}{suffix}', capture=True).strip()
+    fallback = command(flux, 'storage', 'cargo-key', '--scope', f'{repo}:{default_ref}{suffix}', capture=True).strip()
     path_args = [arg for p in paths for arg in ['--path', p]]
     command(flux, 'storage', 'restore', '--key', key, '--key', fallback, *path_args)
     for p in paths:
