@@ -69,6 +69,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
+      - uses: ignition-is-go/cargo-flux@eecab76c2c1296cb7e9e5b8d8d72149e49282fb4 # v0.11.7
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
@@ -110,7 +111,6 @@ jobs:
           if ($tar -notmatch '[\\/]usr[\\/]bin[\\/]tar.exe$') { throw "Expected Git GNU tar: $tar" }
           Write-Output "MSVC linker: $linker"
           Write-Output "GNU tar: $tar"
-      - uses: ignition-is-go/cargo-flux@eecab76c2c1296cb7e9e5b8d8d72149e49282fb4 # v0.11.7
       - run: uv run --with pyyaml python scripts/test-flux-workflow-cache.py
       - name: Exercise native Flux upload, cleanup and restore
         run: uv run scripts/test-native-flux-cache.py
