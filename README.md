@@ -126,8 +126,11 @@ preserved. Configure cacheable tasks in the repository's `flux.toml`, including:
 [cache.s3]
 endpoint_env = "CARGO_FLUX_S3_ENDPOINT"
 bucket_env = "CARGO_FLUX_S3_BUCKET"
-prefix = "cargo-flux/v1"
+prefix = "rust/v1/flux"
 ```
+
+Keep the prefix inside the namespace authorized for the supplied cache identity.
+The example uses a separate Flux subtree under the existing Rust cache namespace.
 
 Task caching and the existing whole-target snapshot cache are distinct. This
 setup enables native task caching; it does not replace snapshot transfers or
