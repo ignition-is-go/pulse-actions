@@ -1,6 +1,6 @@
 # pulse-actions
 
-Reusable, read-only Rust CI building blocks.
+Reusable Rust CI building blocks.
 
 The v1 contract exports two composite actions and four reusable workflows:
 
@@ -110,3 +110,8 @@ these variables determine where each job runs. There is no hosted-runner fallbac
 
 These settings apply to this repository’s own CI. Reusable-workflow callers
 continue to provide their runner selections explicitly.
+
+After successful jobs, `setup-rust` removes checkout-local Cargo target/build
+directories after cache upload post steps finish. Failed jobs and targets outside
+the checkout are preserved. This applies when target caching is enabled. Publish
+or stage artifacts during the job before finalization.
