@@ -2,6 +2,9 @@ name: Set up Rust
 description: Install Rust and restore the platform Cargo caches.
 
 inputs:
+  cache-failure-policy:
+    description: warn or fail on S3 target transport errors; failed saves retain local targets.
+    default: warn
   toolchain:
     description: Rust toolchain channel or version.
     default: stable
@@ -261,6 +264,7 @@ runs:
         ZSTD_CLEVEL: ${{ inputs.cache-zstd-level }}
       with:
         transfer: staged
+        failure-policy: ${{ inputs.cache-failure-policy }}
         endpoint: ${{ steps.s3-target-config.outputs.endpoint }}
         port: ${{ steps.s3-target-config.outputs.port }}
         insecure: ${{ steps.s3-target-config.outputs.insecure }}
@@ -280,6 +284,7 @@ runs:
       id: s3-target-cache-streaming
       uses: $/actions/s3-target-cache
       with:
+        failure-policy: ${{ inputs.cache-failure-policy }}
         endpoint: ${{ steps.s3-target-config.outputs.endpoint }}
         port: ${{ steps.s3-target-config.outputs.port }}
         insecure: ${{ steps.s3-target-config.outputs.insecure }}

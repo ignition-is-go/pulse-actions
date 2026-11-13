@@ -1,0 +1,11 @@
+name: Verify failed-save retention after cleanup
+description: Internal integration assertion for real runner post-step ordering.
+inputs:
+  path:
+    required: true
+    description: Owned fixture file that must survive the denied save.
+runs:
+  using: node24
+  main: main.cjs
+  post: post.cjs
+  post-if: success()

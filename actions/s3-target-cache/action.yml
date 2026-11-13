@@ -2,6 +2,9 @@ name: S3 target cache
 description: Strict S3 compiler cache with staged or Linux streaming transfer.
 
 inputs:
+  failure-policy:
+    description: warn or fail on transport errors; failed saves always retain local targets.
+    default: warn
   transfer:
     description: staged or streaming; streaming requires Linux.
     default: streaming

@@ -120,13 +120,17 @@ async function save(storage, bucket, key, paths, compressionLevel) {
     stdio: ['ignore', 'pipe', 'inherit'],
     env: { ...process.env, ZSTD_CLEVEL: compressionLevel },
   });
+  const completed = waitFor(tar, 'tar save');
   try {
     core.info(`Streaming the Cargo target cache to S3 with zstd level ${compressionLevel}.`);
     await Promise.all([
       storage.putObject(bucket, objectName(key), tar.stdout),
-      waitFor(tar, 'tar save'),
+      completed,
     ]);
   } finally {
+    tar.stdout.destroy();
+    if (tar.exitCode === null) tar.kill();
+    await completed.catch(() => {});
     fs.rmSync(temporary, { recursive: true, force: true });
   }
   core.info('Target cache saved to S3.');

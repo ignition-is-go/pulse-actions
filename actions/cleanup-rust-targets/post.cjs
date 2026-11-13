@@ -2,6 +2,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 function cleanup(root, targets) {
+  if (process.env.PULSE_CARGO_TARGET_SAVE_FAILED === 'true') {
+    console.log('Keeping local Cargo targets because an S3 save failed.');
+    return;
+  }
   const checkout = fs.realpathSync(root);
   for (const target of targets) {
     if (!fs.existsSync(target)) continue;

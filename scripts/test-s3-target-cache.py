@@ -2,6 +2,7 @@
 # dependencies = ["moto[server]==5.2.3", "PyYAML==6.0.3"]
 # ///
 """Run with `uv run scripts/test-s3-target-cache.py`; no LAN credentials needed."""
+from dataclasses import dataclass
 import hashlib
 import json
 import logging
@@ -18,6 +19,13 @@ from moto.server import ThreadedMotoServer
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+@dataclass(frozen=True)
+class CacheProvider:
+    step_id: str
+    kind: str
+    transfer: str
 logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
 
@@ -46,7 +54,8 @@ def command_file(file):
     return values
 
 
-def exercise(base, provider_id):
+def exercise(base, provider):
+    provider_id = provider.step_id
     base.mkdir()
     bucket = f"cache-{provider_id}"
     workspace = base / "workspace"
@@ -57,18 +66,18 @@ def exercise(base, provider_id):
     env.update({
         "GITHUB_WORKSPACE": str(workspace), "GITHUB_REPOSITORY": "example/repo",
         "GITHUB_REF": "refs/heads/main", "GITHUB_OUTPUT": str(base / "output"),
-        "GITHUB_STATE": str(base / "state"), "RUNNER_TEMP": str(base),
+        "GITHUB_STATE": str(base / "state"), "GITHUB_ENV": str(base / "environment"), "RUNNER_TEMP": str(base),
         "RUNNER_OS": {"Darwin": "macOS"}.get(platform.system(), platform.system()),
         "RUNNER_ARCH": platform.machine(),
         "CACHE_WORKSPACES": ".", "CACHE_SHARED_KEY": "round-trip",
         "CACHE_CARGO_HOME": str(base / "cargo-home"),
-        "CACHE_TRANSFER": "streaming" if provider_id.endswith("streaming") else "staged",
+        "CACHE_TRANSFER": provider.transfer,
         "CACHE_DEFAULT_BRANCH": "main", "CACHE_AUTH": "static", "CACHE_BUCKET": bucket,
         "CACHE_ACCESS_KEY": "testing", "CACHE_SECRET_KEY": "testing",
         "AWS_ACCESS_KEY_ID": "testing", "AWS_SECRET_ACCESS_KEY": "testing",
         "AWS_DEFAULT_REGION": "us-east-1", "AWS_EC2_METADATA_DISABLED": "true",
     })
-    for name in ["output", "state"]:
+    for name in ["output", "state", "environment"]:
         (base / name).touch()
     run(["git", "init", "-q"], workspace, env)
     run(["git", "add", "."], workspace, env)
@@ -76,14 +85,14 @@ def exercise(base, provider_id):
     action = yaml.safe_load((ROOT / "actions/setup-rust/action.yml").read_text())
     step = next(step for step in action["runs"]["steps"] if step.get("id") == provider_id)
     if step["uses"].startswith("$/"):
-        provider = ROOT / step["uses"][2:]
+        provider_path = ROOT / step["uses"][2:]
     else:
         repo, ref = step["uses"].split("@")
-        provider = base / "provider"
-        provider.mkdir()
-        run(["git", "init", "-q"], provider, env)
-        run(["git", "fetch", "-q", "--depth=1", f"https://github.com/{repo}.git", ref], provider, env)
-        run(["git", "checkout", "-q", "FETCH_HEAD"], provider, env)
+        provider_path = base / "provider"
+        provider_path.mkdir()
+        run(["git", "init", "-q"], provider_path, env)
+        run(["git", "fetch", "-q", "--depth=1", f"https://github.com/{repo}.git", ref], provider_path, env)
+        run(["git", "checkout", "-q", "FETCH_HEAD"], provider_path, env)
     server = ThreadedMotoServer(ip_address="127.0.0.1", port=0, verbose=False)
     server.start()
     try:
@@ -100,19 +109,20 @@ def exercise(base, provider_id):
             "inputs.compiler-cache-bucket": bucket, "inputs.compiler-cache-access-key": "testing",
             "inputs.compiler-cache-secret-key": "testing", "inputs.compiler-cache-session-token": "",
             "inputs.cache-zstd-level": "3",
+            "inputs.cache-failure-policy": "fail",
             "github.event_name == 'pull_request' || github.event_name == 'pull_request_target'": "false",
         })
         for name, value in step.get("env", {}).items():
             env[name] = re.sub(r"\$\{\{ (.*?) \}\}", lambda m: expressions[m[1]], str(value))
         for name, value in step["with"].items():
             env[f"INPUT_{name.upper()}"] = re.sub(r"\$\{\{ (.*?) \}\}", lambda m: expressions[m[1]], str(value))
-        provider_action = yaml.safe_load((provider / "action.yml").read_text())
-        restore = ["node", str(provider / provider_action["runs"]["main"])]
-        save = ["node", str(provider / provider_action["runs"]["post"])]
+        provider_action = yaml.safe_load((provider_path / "action.yml").read_text())
+        restore = ["node", str(provider_path / provider_action["runs"]["main"])]
+        save = ["node", str(provider_path / provider_action["runs"]["post"])]
         log = run(restore, workspace, env)
         assert command_file(base / "output")["cache-hit"] == "false", log
         env.update({f"STATE_{k}": v for k, v in command_file(base / "state").items()})
-        cargo_home = provider_id == "cargo-registry-cache-s3"
+        cargo_home = provider.kind == "registry"
         if cargo_home:
             targets = [Path(p) for p in config["cargo-home-paths"].splitlines()]
             for index, target in enumerate(targets):
@@ -159,18 +169,25 @@ def exercise(base, provider_id):
             denied["STATE_restore-only"] = "false"
             denied["INPUT_RESTORE-ONLY"] = "false"
             client.put_bucket_policy(Bucket=bucket, Policy=json.dumps({"Version": "2012-10-17", "Statement": [{"Effect": "Deny", "Principal": "*", "Action": "s3:PutObject", "Resource": f"arn:aws:s3:::{bucket}/*"}]}))
-            result = subprocess.run(save, cwd=workspace, env=denied, text=True, capture_output=True)
+            result = subprocess.run(save, cwd=workspace, env=denied, text=True, capture_output=True, timeout=60)
             assert result.returncode != 0, "denied upload was reported as success"
             assert all(target.exists() for target in targets), "failed save removed a target"
-            print(f"PASS ({provider_id}): denied upload fails and retains local targets.")
+            assert 'PULSE_CARGO_TARGET_SAVE_FAILED' in (base / 'environment').read_text()
+            denied["STATE_failure-policy"] = "warn"
+            result = subprocess.run(save, cwd=workspace, env=denied, text=True, capture_output=True, timeout=60)
+            assert result.returncode == 0, result.stdout + result.stderr
+            assert all(target.exists() for target in targets)
+            assert 'PULSE_CARGO_TARGET_SAVE_FAILED' in (base / 'environment').read_text()
+            print(f"PASS ({provider_id}): denied upload retains targets in fail and warn modes.")
     finally:
         server.stop()
 
 
 with tempfile.TemporaryDirectory(prefix="pulse-s3-test-") as directory:
     root = Path(directory).resolve()
-    providers = ["cargo-registry-cache-s3", "s3-target-cache-staged"]
+    providers = [CacheProvider("cargo-registry-cache-s3", "registry", "staged"),
+                 CacheProvider("s3-target-cache-staged", "target", "staged")]
     if platform.system() == "Linux":
-        providers.append("s3-target-cache-streaming")
-    for provider_id in providers:
-        exercise(root / provider_id, provider_id)
+        providers.append(CacheProvider("s3-target-cache-streaming", "target", "streaming"))
+    for provider in providers:
+        exercise(root / provider.step_id, provider)

@@ -118,3 +118,24 @@ jobs:
         run: uv run scripts/test-native-flux-cache.py
       - name: Build, save, delete, restore and test offline
         run: uv run scripts/test-s3-target-cache.py
+      - name: Start an isolated denied-save S3 fixture
+        id: denied-cache
+        run: uv run scripts/start-target-cache-warning-fixture.py
+      - uses: $/.github/actions/assert-target-cache-retained
+        with:
+          path: ${{ github.workspace }}/.ci-cache-warning-target/warm
+      - uses: $/actions/cleanup-rust-targets
+        with:
+          workspaces: . -> .ci-cache-warning-target
+      - uses: $/actions/s3-target-cache
+        with:
+          transfer: staged
+          failure-policy: warn
+          endpoint: 127.0.0.1
+          port: ${{ steps.denied-cache.outputs.port }}
+          insecure: true
+          bucket: ${{ steps.denied-cache.outputs.bucket }}
+          access-key: testing
+          secret-key: testing
+          path: ${{ github.workspace }}/.ci-cache-warning-target
+          key: denied-save/${{ github.run_id }}/${{ github.run_attempt }}

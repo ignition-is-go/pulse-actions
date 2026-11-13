@@ -52,3 +52,21 @@ test('cleanup post is success-only and registered before every cache save action
   const metadata = fs.readFileSync(path.join(__dirname, '../actions/cleanup-rust-targets/action.yml'), 'utf8');
   assert.match(metadata, /post-if: success\(\)/);
 });
+
+
+test('a nonfatal failed-save receipt preserves every checkout-local target', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'target-save-failure-'));
+  const target = path.join(root, 'target');
+  fs.mkdirSync(target);
+  fs.writeFileSync(path.join(target, 'warm'), 'compiler output');
+  const prior = process.env.PULSE_CARGO_TARGET_SAVE_FAILED;
+  process.env.PULSE_CARGO_TARGET_SAVE_FAILED = 'true';
+  try {
+    cleanup(root, [target]);
+    assert.equal(fs.readFileSync(path.join(target, 'warm'), 'utf8'), 'compiler output');
+  } finally {
+    if (prior === undefined) delete process.env.PULSE_CARGO_TARGET_SAVE_FAILED;
+    else process.env.PULSE_CARGO_TARGET_SAVE_FAILED = prior;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

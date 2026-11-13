@@ -78922,13 +78922,17 @@ async function save(storage, bucket, key, paths, compressionLevel) {
     stdio: ['ignore', 'pipe', 'inherit'],
     env: { ...process.env, ZSTD_CLEVEL: compressionLevel },
   });
+  const completed = waitFor(tar, 'tar save');
   try {
     core.info(`Streaming the Cargo target cache to S3 with zstd level ${compressionLevel}.`);
     await Promise.all([
       storage.putObject(bucket, objectName(key), tar.stdout),
-      waitFor(tar, 'tar save'),
+      completed,
     ]);
   } finally {
+    tar.stdout.destroy();
+    if (tar.exitCode === null) tar.kill();
+    await completed.catch(() => {});
     fs.rmSync(temporary, { recursive: true, force: true });
   }
   core.info('Target cache saved to S3.');
@@ -80775,23 +80779,30 @@ async function main() {
   const transfer = core.getInput('transfer') || 'streaming';
   if (!['staged', 'streaming'].includes(transfer)) throw new Error('Invalid S3 transfer mode.');
   if (transfer === 'streaming' && process.platform !== 'linux') throw new Error('Streaming requires Linux.');
-  const names = ['transfer', 'endpoint', 'port', 'insecure', 'region', 'bucket', 'access-key', 'secret-key',
+  const policy = core.getInput('failure-policy') || 'warn';
+  if (!['warn', 'fail'].includes(policy)) throw new Error('Invalid cache failure policy.');
+  const names = ['failure-policy', 'transfer', 'endpoint', 'port', 'insecure', 'region', 'bucket', 'access-key', 'secret-key',
     'session-token', 'path', 'key', 'restore-keys', 'restore-only', 'compression-level'];
   for (const name of names) core.saveState(name, core.getInput(name));
 
   const bucket = core.getInput('bucket', { required: true });
   const key = core.getInput('key', { required: true });
   const restoreKeys = core.getMultilineInput('restore-keys');
-  const match = await find(client(), bucket, key, restoreKeys);
-  core.saveState('matched-key', match?.key || '');
-  core.setOutput('cache-hit', String(match?.key === key));
-  core.setOutput('cache-size', String(match?.size || 0));
-  core.setOutput('cache-matched-key', match?.key || '');
-  if (!match) {
-    core.info('No compatible S3 target cache was found.');
-    return;
+  try {
+    const match = await find(client(), bucket, key, restoreKeys);
+    core.saveState('matched-key', match?.key || '');
+    core.setOutput('cache-hit', String(match?.key === key));
+    core.setOutput('cache-size', String(match?.size || 0));
+    core.setOutput('cache-matched-key', match?.key || '');
+    if (!match) {
+      core.info('No compatible S3 target cache was found.');
+      return;
+    }
+    await restore(client(), bucket, match);
+  } catch (error) {
+    if (policy === 'fail') throw error;
+    core.warning(error.message);
   }
-  await restore(client(), bucket, match);
 }
 
 main().catch(error => core.setFailed(error.message));
