@@ -23,7 +23,7 @@ async function main() {
     core.setOutput('cache-size', String(match?.size || 0));
     core.setOutput('cache-matched-key', match?.key || '');
     if (!match) {
-      core.info('No compatible S3 target cache was found.');
+      core.info('No compatible S3 Cargo cache was found.');
       return;
     }
     await restore(client(), bucket, match);

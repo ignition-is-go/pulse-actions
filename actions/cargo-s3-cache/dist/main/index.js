@@ -78881,7 +78881,7 @@ async function restore(storage, bucket, object) {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'pulse-target-cache-'));
     const archive = path.join(temporary, archiveName);
     try {
-      core.info(`Downloading ${object.size} bytes from S3 into the Cargo target cache.`);
+      core.info(`Downloading ${object.size} bytes from S3 into the Cargo cache.`);
       await storage.fGetObject(bucket, object.name, archive);
       await extractTar(archive, CompressionMethod.ZstdWithoutLong);
     } finally {
@@ -78889,7 +78889,7 @@ async function restore(storage, bucket, object) {
     }
     return;
   }
-  core.info(`Streaming ${object.size} bytes from S3 into the Cargo target cache.`);
+  core.info(`Streaming ${object.size} bytes from S3 into the Cargo cache.`);
   const source = await storage.getObject(bucket, object.name);
   const tar = spawn('tar', ['-xf', '-', '-P', '-C', process.env.GITHUB_WORKSPACE,
     '--use-compress-program', 'unzstd'], { stdio: ['pipe', 'inherit', 'inherit'] });
@@ -78909,7 +78909,7 @@ async function save(storage, bucket, key, paths, compressionLevel) {
       process.env.ZSTD_CLEVEL = compressionLevel;
       await createTar(temporary, existing.map(candidate => candidate.split(path.sep).join('/')), CompressionMethod.ZstdWithoutLong);
       await storage.fPutObject(bucket, objectName(key), path.join(temporary, archiveName));
-      core.info('Target cache saved to S3.');
+      core.info('Cargo cache saved to S3.');
     } finally {
       fs.rmSync(temporary, { recursive: true, force: true });
     }
@@ -78924,7 +78924,7 @@ async function save(storage, bucket, key, paths, compressionLevel) {
   });
   const completed = waitFor(tar, 'tar save');
   try {
-    core.info(`Streaming the Cargo target cache to S3 with zstd level ${compressionLevel}.`);
+    core.info(`Streaming the Cargo cache to S3 with zstd level ${compressionLevel}.`);
     await Promise.all([
       storage.putObject(bucket, objectName(key), tar.stdout),
       completed,
@@ -78935,7 +78935,7 @@ async function save(storage, bucket, key, paths, compressionLevel) {
     await completed.catch(() => {});
     fs.rmSync(temporary, { recursive: true, force: true });
   }
-  core.info('Target cache saved to S3.');
+  core.info('Cargo cache saved to S3.');
 }
 
 module.exports = { client, find, restore, save, state };
@@ -80797,7 +80797,7 @@ async function main() {
     core.setOutput('cache-size', String(match?.size || 0));
     core.setOutput('cache-matched-key', match?.key || '');
     if (!match) {
-      core.info('No compatible S3 target cache was found.');
+      core.info('No compatible S3 Cargo cache was found.');
       return;
     }
     await restore(client(), bucket, match);
