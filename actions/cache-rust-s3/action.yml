@@ -69,8 +69,9 @@ runs:
     - name: Ensure Windows archive compression
       if: runner.os == 'Windows'
       shell: powershell
-      run: |
+      run: | # zizmor: ignore[github-env] runner temp rejects CR/LF; suffix and verified archive path are constants
         $ErrorActionPreference = 'Stop'
+        if ($env:RUNNER_TEMP -match '[\r\n]') { throw 'Runner temporary directory must be single-line' }
         if (Get-Command zstd -ErrorAction SilentlyContinue) { exit 0 }
         $directory = Join-Path $env:RUNNER_TEMP "pulse-zstd-$([guid]::NewGuid())"
         New-Item -ItemType Directory -Path $directory | Out-Null
