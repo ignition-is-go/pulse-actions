@@ -66,7 +66,7 @@ function prepare(env, run = (program, args, cwd) =>
   const buildEnv = Object.entries(env).filter(([name]) =>
     /^(RUSTFLAGS|RUSTDOCFLAGS|CARGO_ENCODED_RUSTFLAGS|CARGO_BUILD_TARGET|CC|CXX|CFLAGS|CXXFLAGS)$/.test(name)
     || /^CARGO_(PROFILE_|TARGET_)/.test(name)).sort(([a], [b]) => a.localeCompare(b));
-  const identity = hash([env.RUNNER_OS, env.RUNNER_ARCH, compiler, uniquePaths.map(p => path.relative(root, p)),
+  const identity = hash([env.RUNNER_OS, env.RUNNER_ARCH, compiler, uniquePaths,
     env.CACHE_SHARED_KEY, env.CACHE_ENV_HASH, env.CACHE_LOCK_HASH, env.CACHE_TRANSFER, buildEnv]);
   const namespace = 'rust/v1/targets/';
   const prefix = `${namespace}${hash(env.GITHUB_REPOSITORY)}-${identity}`;
@@ -86,7 +86,7 @@ function prepare(env, run = (program, args, cwd) =>
   }
   const cargoHomeNamespace = 'rust/v1/cargo-home/';
   const cargoHomeIdentity = hash([env.RUNNER_OS, env.RUNNER_ARCH, compiler, env.CACHE_SHARED_KEY,
-    env.CACHE_LOCK_HASH]);
+    env.CACHE_LOCK_HASH, cargoHomePaths]);
   return {
     endpoint: endpoint.hostname,
     port: endpoint.port || (endpoint.protocol === 'https:' ? '443' : '80'),

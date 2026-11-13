@@ -107,3 +107,12 @@ test('S3 namespaces are identical across operating systems', () => {
     assert.ok(result['cargo-home-key'].startsWith('rust/v1/cargo-home/'));
   }
 });
+
+test('absolute archive locations isolate checkout and Cargo-home caches', () => {
+  const original = config({CACHE_WORKSPACES: '. -> target'});
+  const moved = config({GITHUB_WORKSPACE: path.join(root, 'other'), CACHE_WORKSPACES: '. -> target'});
+  assert.notEqual(original.key, moved.key);
+  assert.notEqual(original['cargo-home-key'], config({CACHE_CARGO_HOME: path.join(root, 'other-cargo')})['cargo-home-key']);
+  assert.notEqual(config({RUNNER_OS: 'Windows', CACHE_SPARSE_INDEX_ENABLED: 'true', CACHE_SPARSE_INDEX_PATH: path.join(root, 'index-a')})['cargo-home-key'],
+    config({RUNNER_OS: 'Windows', CACHE_SPARSE_INDEX_ENABLED: 'true', CACHE_SPARSE_INDEX_PATH: path.join(root, 'index-b')})['cargo-home-key']);
+});

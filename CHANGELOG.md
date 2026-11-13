@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.1
+
+- Report a cache hit only after extraction succeeds, and allow rebuilt outputs to replace a corrupt archive after a nonfatal restore failure.
+
+- Include absolute archive locations in cache identity so runners with different checkout or Cargo-home paths cannot restore into another location.
+
 ## 2.2.0
 
 - Expose shared Cargo registry/target S3 caching without toolchain installation for platform jobs.
