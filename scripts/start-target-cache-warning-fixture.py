@@ -48,7 +48,7 @@ def start():
         raise RuntimeError('Owned S3 fixture did not become ready')
     target = Path(os.environ['GITHUB_WORKSPACE']) / '.ci-cache-warning-target'
     target.mkdir()
-    (target / 'warm').write_text('warm compiler fixture\n')
+    (target / 'warm').write_bytes(b'warm compiler fixture\n')
     with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
         for key, value in config.items():
             output.write(f'{key}={value}\n')
