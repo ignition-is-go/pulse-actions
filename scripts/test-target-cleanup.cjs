@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { cleanup } = require('../.github/actions/cleanup-rust-targets/post.cjs');
+const { cleanup } = require('../actions/cleanup-rust-targets/post.cjs');
 const { targetPaths } = require('../actions/setup-rust/prepare-target-cache.cjs');
 
 test('removes resolved Cargo outputs while preserving published artifacts and uploaded cache', () => {
@@ -45,10 +45,10 @@ test('preserves checkout root, external targets and symlinked shared caches', ()
 
 test('cleanup post is success-only and registered before every cache save action', () => {
   const action = fs.readFileSync(path.join(__dirname, '../actions/setup-rust/action.yml'), 'utf8');
-  const cleanupAt = action.indexOf('uses: $/.github/actions/cleanup-rust-targets');
+  const cleanupAt = action.indexOf('uses: $/actions/cleanup-rust-targets');
   for (const cache of ['uses: Swatinem/rust-cache@', 'uses: actions/cache@', 'uses: tespkg/actions-cache@', 'uses: $/.github/actions/s3-target-cache']) {
     assert.ok(action.indexOf(cache) > cleanupAt, cache);
   }
-  const metadata = fs.readFileSync(path.join(__dirname, '../.github/actions/cleanup-rust-targets/action.yml'), 'utf8');
+  const metadata = fs.readFileSync(path.join(__dirname, '../actions/cleanup-rust-targets/action.yml'), 'utf8');
   assert.match(metadata, /post-if: success\(\)/);
 });

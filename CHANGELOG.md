@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.0
+
+- Expose the existing Node-based target cleanup action for cache-only platform jobs.
+
 ## Unreleased
 
 ### Next major

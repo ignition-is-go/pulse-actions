@@ -159,7 +159,7 @@ runs:
 
     # Post steps run in reverse registration order: register cleanup before
     # caches so their uploads finish before local targets are removed.
-    - uses: $/.github/actions/cleanup-rust-targets
+    - uses: $/actions/cleanup-rust-targets
       if: inputs.cache-targets == 'true'
       with:
         workspaces: ${{ inputs.cache-workspaces }}

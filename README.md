@@ -158,3 +158,7 @@ tries that scope on the current ref, then the same scope on the default branch;
 parallel jobs cannot overwrite one another's snapshots. Cargo target directories
 must be inside the checkout. For multiple Cargo workspaces in one job, set
 `CARGO_TARGET_DIR` to a shared directory inside that checkout.
+
+### Cache-only jobs
+
+`actions/cleanup-rust-targets` registers checkout-local Cargo target cleanup without configuring Rust or requiring a shell. Register it before a cache action so cache upload post steps run first. Its post step runs only after a successful job; failed uploads retain targets. It preserves external/shared target directories. Use this entry point when a platform supplies its own Rust setup and cache transfer.
