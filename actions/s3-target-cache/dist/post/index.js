@@ -78907,7 +78907,7 @@ async function save(storage, bucket, key, paths, compressionLevel) {
     try {
       if (!/^([1-9]|1[0-9])$/.test(compressionLevel)) throw new Error('Invalid compression level.');
       process.env.ZSTD_CLEVEL = compressionLevel;
-      await createTar(temporary, existing, CompressionMethod.ZstdWithoutLong);
+      await createTar(temporary, existing.map(candidate => candidate.split(path.sep).join('/')), CompressionMethod.ZstdWithoutLong);
       await storage.fPutObject(bucket, objectName(key), path.join(temporary, archiveName));
       core.info('Target cache saved to S3.');
     } finally {
