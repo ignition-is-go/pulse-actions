@@ -22,7 +22,7 @@ jobs:
     runs-on: ${{ fromJSON(matrix.os == 'ubuntu-24.04' && vars.CI_LINUX_RUNNER_JSON || matrix.os == 'windows-2025' && vars.CI_WINDOWS_RUNNER_JSON || vars.CI_MACOS_RUNNER_JSON) }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: $/actions/setup-rust
@@ -41,10 +41,10 @@ jobs:
     name: public contract
     runs-on: ${{ fromJSON(vars.CI_LINUX_RUNNER_JSON) }}
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
       - name: Install archive compression tools
@@ -66,12 +66,12 @@ jobs:
     runs-on: ${{ fromJSON(matrix.os == 'ubuntu-24.04' && vars.CI_LINUX_RUNNER_JSON || matrix.os == 'windows-2025' && vars.CI_WINDOWS_RUNNER_JSON || vars.CI_MACOS_RUNNER_JSON) }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: ignition-is-go/cargo-flux@eecab76c2c1296cb7e9e5b8d8d72149e49282fb4 # v0.11.7
         if: runner.os == 'Linux'
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
       - name: Install archive compression tools
@@ -98,7 +98,7 @@ jobs:
           $gitTools, $directory, (Split-Path $linker -Parent) | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - run: node --test scripts/test-target-cache.cjs scripts/test-target-cleanup.cjs
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
-      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           enable-cache: false
       - name: Verify Windows archive and linker selection
