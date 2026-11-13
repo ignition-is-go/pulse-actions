@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.1
+
+- Include absolute archive locations in cache identity so runners with different checkout or Cargo-home paths cannot restore into another location.
+
 ## 2.2.0
 
 - Expose shared Cargo registry/target S3 caching without toolchain installation for platform jobs.
