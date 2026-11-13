@@ -3,6 +3,7 @@
 ## 2.2.0
 
 - Expose the existing Node-based target cleanup action for cache-only platform jobs.
+- Add strict staged S3 target saves on every supported platform; failed uploads fail the post step and retain targets. Existing setup-rust staged caching now uses this transport.
 
 ## Unreleased
 

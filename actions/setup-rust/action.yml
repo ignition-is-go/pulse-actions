@@ -255,29 +255,30 @@ runs:
     - name: Restore and save staged S3 target cache
       if: inputs.cache-targets == 'true' && inputs.cache-target-backend == 's3' && inputs.cache-s3-transfer == 'staged'
       id: s3-target-cache-staged
-      uses: tespkg/actions-cache@e07e2d4953dc8c020d447363e5064e36d04f3cf9 # v1
+      uses: $/actions/s3-target-cache
       env:
         AWS_SESSION_TOKEN: ${{ inputs.compiler-cache-session-token }}
         ZSTD_CLEVEL: ${{ inputs.cache-zstd-level }}
       with:
+        transfer: staged
         endpoint: ${{ steps.s3-target-config.outputs.endpoint }}
         port: ${{ steps.s3-target-config.outputs.port }}
         insecure: ${{ steps.s3-target-config.outputs.insecure }}
         region: auto
         bucket: ${{ inputs.compiler-cache-bucket }}
-        accessKey: ${{ inputs.compiler-cache-access-key }}
-        secretKey: ${{ inputs.compiler-cache-secret-key }}
-        sessionToken: ${{ inputs.compiler-cache-session-token }}
+        access-key: ${{ inputs.compiler-cache-access-key }}
+        secret-key: ${{ inputs.compiler-cache-secret-key }}
+        session-token: ${{ inputs.compiler-cache-session-token }}
         path: ${{ steps.s3-target-config.outputs.paths }}
         key: ${{ steps.s3-target-config.outputs.key }}
         restore-keys: ${{ steps.s3-target-config.outputs.restore-key }}
-        use-fallback: 'false'
+        compression-level: ${{ inputs.cache-zstd-level }}
         restore-only: ${{ steps.s3-target-config.outputs.target-restore-only }}
 
     - name: Restore and save streaming S3 target cache
       if: inputs.cache-targets == 'true' && inputs.cache-target-backend == 's3' && inputs.cache-s3-transfer == 'streaming'
       id: s3-target-cache-streaming
-      uses: $/.github/actions/s3-target-cache
+      uses: $/actions/s3-target-cache
       with:
         endpoint: ${{ steps.s3-target-config.outputs.endpoint }}
         port: ${{ steps.s3-target-config.outputs.port }}

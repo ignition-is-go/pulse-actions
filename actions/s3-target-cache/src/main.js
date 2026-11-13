@@ -2,8 +2,10 @@ const core = require('@actions/core');
 const { client, find, restore } = require('./cache');
 
 async function main() {
-  if (process.platform !== 'linux') throw new Error('The streaming S3 target cache supports Linux only.');
-  const names = ['endpoint', 'port', 'insecure', 'region', 'bucket', 'access-key', 'secret-key',
+  const transfer = core.getInput('transfer') || 'streaming';
+  if (!['staged', 'streaming'].includes(transfer)) throw new Error('Invalid S3 transfer mode.');
+  if (transfer === 'streaming' && process.platform !== 'linux') throw new Error('Streaming requires Linux.');
+  const names = ['transfer', 'endpoint', 'port', 'insecure', 'region', 'bucket', 'access-key', 'secret-key',
     'session-token', 'path', 'key', 'restore-keys', 'restore-only', 'compression-level'];
   for (const name of names) core.saveState(name, core.getInput(name));
 

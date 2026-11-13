@@ -3,6 +3,7 @@
 # ///
 """Run with `uv run scripts/test-s3-target-cache.py`; no LAN credentials needed."""
 import hashlib
+import json
 import logging
 import os
 import platform
@@ -151,6 +152,17 @@ def exercise(base, provider_id):
         assert len(client.list_objects_v2(Bucket=bucket)["Contents"]) == 1
         print(f"PASS ({provider_id}): restored {len(artifacts)} cached files byte-for-byte from S3.")
         print(f"PASS ({provider_id}): fallback behavior and read-only mode work.")
+        if not cargo_home:
+            denied = dict(env)
+            denied["STATE_key"] = config["key"] + "-denied"
+            denied["STATE_matched-key"] = ""
+            denied["STATE_restore-only"] = "false"
+            denied["INPUT_RESTORE-ONLY"] = "false"
+            client.put_bucket_policy(Bucket=bucket, Policy=json.dumps({"Version": "2012-10-17", "Statement": [{"Effect": "Deny", "Principal": "*", "Action": "s3:PutObject", "Resource": f"arn:aws:s3:::{bucket}/*"}]}))
+            result = subprocess.run(save, cwd=workspace, env=denied, text=True, capture_output=True)
+            assert result.returncode != 0, "denied upload was reported as success"
+            assert all(target.exists() for target in targets), "failed save removed a target"
+            print(f"PASS ({provider_id}): denied upload fails and retains local targets.")
     finally:
         server.stop()
 

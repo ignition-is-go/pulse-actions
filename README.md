@@ -162,3 +162,5 @@ must be inside the checkout. For multiple Cargo workspaces in one job, set
 ### Cache-only jobs
 
 `actions/cleanup-rust-targets` registers checkout-local Cargo target cleanup without configuring Rust or requiring a shell. Register it before a cache action so cache upload post steps run first. Its post step runs only after a successful job; failed uploads retain targets. It preserves external/shared target directories. Use this entry point when a platform supplies its own Rust setup and cache transfer.
+
+`actions/s3-target-cache` exposes the strict target-cache transport directly. Use `transfer: staged` for Windows/macOS or `transfer: streaming` for Linux. Register `actions/cleanup-rust-targets` before it. Both save modes propagate upload errors, keeping success-only cleanup from removing unsaved targets. Staged archives use the same archive helpers and format as the former staged dependency.
