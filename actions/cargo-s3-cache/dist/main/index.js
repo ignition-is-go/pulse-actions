@@ -80773,26 +80773,41 @@ module.exports = /*#__PURE__*/JSON.parse('{"application/1d-interleaved-parityfec
 /************************************************************************/
 var __webpack_exports__ = {};
 const core = __nccwpck_require__(7484);
-const { client, save, state } = __nccwpck_require__(2351);
+const { client, find, restore } = __nccwpck_require__(2351);
 
-async function post() {
-  if (state('restore-only') === 'true') {
-    core.info('Target cache is restore-only; skipping save.');
-    return;
+async function main() {
+  const transfer = core.getInput('transfer') || 'streaming';
+  if (!['staged', 'streaming'].includes(transfer)) throw new Error('Invalid S3 transfer mode.');
+  if (transfer === 'streaming' && process.platform !== 'linux') throw new Error('Streaming requires Linux.');
+  const policy = core.getInput('failure-policy') || 'warn';
+  if (!['warn', 'fail'].includes(policy)) throw new Error('Invalid cache failure policy.');
+  const kind = core.getInput('kind') || 'target';
+  if (!['registry', 'target'].includes(kind)) throw new Error('Invalid cache kind.');
+  const names = ['kind', 'failure-policy', 'transfer', 'endpoint', 'port', 'insecure', 'region', 'bucket', 'access-key', 'secret-key',
+    'session-token', 'path', 'key', 'restore-keys', 'restore-only', 'compression-level'];
+  for (const name of names) core.saveState(name, core.getInput(name));
+
+  const bucket = core.getInput('bucket', { required: true });
+  const key = core.getInput('key', { required: true });
+  const restoreKeys = core.getMultilineInput('restore-keys');
+  try {
+    const match = await find(client(), bucket, key, restoreKeys);
+    core.saveState('matched-key', match?.key || '');
+    core.setOutput('cache-hit', String(match?.key === key));
+    core.setOutput('cache-size', String(match?.size || 0));
+    core.setOutput('cache-matched-key', match?.key || '');
+    if (!match) {
+      core.info('No compatible S3 target cache was found.');
+      return;
+    }
+    await restore(client(), bucket, match);
+  } catch (error) {
+    if (policy === 'fail') throw error;
+    core.warning(error.message);
   }
-  const key = state('key');
-  if (state('matched-key') === key) {
-    core.info('The exact target cache key was restored; skipping save.');
-    return;
-  }
-  await save(client(), state('bucket'), key, state('path').split(/\r?\n/).filter(Boolean), state('compression-level'));
 }
 
-post().catch(error => {
-  core.exportVariable('PULSE_CARGO_TARGET_SAVE_FAILED', 'true');
-  if (state('failure-policy') === 'fail') core.setFailed(error.message);
-  else core.warning(error.message);
-});
+main().catch(error => core.setFailed(error.message));
 
 module.exports = __webpack_exports__;
 /******/ })()

@@ -15,7 +15,8 @@ async function post() {
 }
 
 post().catch(error => {
-  core.exportVariable('PULSE_CARGO_TARGET_SAVE_FAILED', 'true');
+  const kind = state('kind') || 'target';
+  core.exportVariable(`PULSE_CARGO_${kind.toUpperCase()}_SAVE_FAILED`, 'true');
   if (state('failure-policy') === 'fail') core.setFailed(error.message);
   else core.warning(error.message);
 });

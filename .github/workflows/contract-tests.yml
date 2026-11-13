@@ -127,7 +127,7 @@ jobs:
       - uses: $/actions/cleanup-rust-targets
         with:
           workspaces: . -> .ci-cache-warning-target
-      - uses: $/actions/s3-target-cache
+      - uses: $/actions/cargo-s3-cache
         with:
           transfer: staged
           failure-policy: warn

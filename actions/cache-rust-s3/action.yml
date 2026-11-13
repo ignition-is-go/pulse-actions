@@ -1,0 +1,126 @@
+name: Cache Rust on S3
+description: Cache Cargo registry and target outputs with shared identity and cleanup, without toolchain setup.
+inputs:
+  workspaces:
+    description: Newline-separated Cargo workspaces or explicit workspace-to-target mappings.
+    default: .
+  shared-key:
+    description: Job, target and profile scope.
+    default: v1
+  cache-targets:
+    description: Cache compiler outputs in addition to registry sources.
+    default: 'true'
+  save-if:
+    description: Save compiler outputs after successful builds.
+    default: 'true'
+  transfer:
+    description: Target transfer mode, staged or Linux streaming.
+    default: staged
+  zstd-level:
+    description: Target compression level from 1 through 19.
+    default: '3'
+  failure-policy:
+    description: warn or fail on S3 errors; failed target saves always retain local outputs.
+    default: warn
+  add-environment-hash-key:
+    description: Include compiler environment configuration in cache identity.
+    default: 'true'
+  windows-sparse-index:
+    description: Include the Windows sparse registry index.
+    default: 'false'
+  windows-sparse-index-path:
+    description: Sparse registry index directory.
+    default: ~/.cargo/registry/index
+  auth:
+    description: S3 caches require static bucket-scoped credentials.
+    default: static
+  endpoint:
+    description: S3 endpoint URL.
+    required: true
+  bucket:
+    description: S3 bucket.
+    required: true
+  access-key:
+    description: S3 access key.
+    required: true
+  secret-key:
+    description: S3 secret key.
+    required: true
+  session-token:
+    description: Optional S3 session token.
+    default: ''
+outputs:
+  target-cache-hit:
+    description: Whether the exact target key was restored.
+    value: ${{ steps.target-cache.outputs.cache-hit }}
+  registry-cache-hit:
+    description: Whether the exact registry key was restored.
+    value: ${{ steps.registry-cache.outputs.cache-hit }}
+runs:
+  using: composite
+  steps:
+    - uses: $/actions/cleanup-rust-targets
+      if: inputs.cache-targets == 'true'
+      with:
+        workspaces: ${{ inputs.workspaces }}
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      with:
+        node-version: '22'
+    - name: Prepare Cargo cache identities
+      id: config
+      shell: ${{ runner.os == 'Windows' && 'powershell' || 'bash' }}
+      env:
+        CACHE_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        CACHE_PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+        CACHE_WORKSPACES: ${{ inputs.workspaces }}
+        CACHE_SPARSE_INDEX_ENABLED: ${{ inputs.windows-sparse-index }}
+        CACHE_SPARSE_INDEX_PATH: ${{ inputs.windows-sparse-index-path }}
+        CACHE_TRANSFER: ${{ inputs.transfer }}
+        CACHE_SAVE_IF: ${{ inputs.save-if }}
+        CACHE_SHARED_KEY: ${{ inputs.shared-key }}
+        CACHE_ENV_HASH: ${{ inputs.add-environment-hash-key == 'true' && hashFiles('**/Cargo.toml', '**/.cargo/config', '**/.cargo/config.toml', '**/rust-toolchain', '**/rust-toolchain.toml') || '' }}
+        CACHE_LOCK_HASH: ${{ hashFiles('**/Cargo.lock') }}
+        CACHE_AUTH: ${{ inputs.auth }}
+        CACHE_ENDPOINT: ${{ inputs.endpoint }}
+        CACHE_BUCKET: ${{ inputs.bucket }}
+        CACHE_ACCESS_KEY: ${{ inputs.access-key }}
+        CACHE_SECRET_KEY: ${{ inputs.secret-key }}
+        CACHE_SESSION_TOKEN: ${{ inputs.session-token }}
+      run: node "${{ github.action_path }}/prepare.cjs"
+    - uses: $/actions/cargo-s3-cache
+      id: registry-cache
+      with:
+        kind: registry
+        transfer: staged
+        failure-policy: ${{ inputs.failure-policy }}
+        endpoint: ${{ steps.config.outputs.endpoint }}
+        port: ${{ steps.config.outputs.port }}
+        insecure: ${{ steps.config.outputs.insecure }}
+        region: auto
+        bucket: ${{ inputs.bucket }}
+        access-key: ${{ inputs.access-key }}
+        secret-key: ${{ inputs.secret-key }}
+        session-token: ${{ inputs.session-token }}
+        path: ${{ steps.config.outputs.cargo-home-paths }}
+        key: ${{ steps.config.outputs.cargo-home-key }}
+        restore-only: ${{ steps.config.outputs.restore-only }}
+    - uses: $/actions/cargo-s3-cache
+      id: target-cache
+      if: inputs.cache-targets == 'true'
+      with:
+        kind: target
+        transfer: ${{ inputs.transfer }}
+        failure-policy: ${{ inputs.failure-policy }}
+        endpoint: ${{ steps.config.outputs.endpoint }}
+        port: ${{ steps.config.outputs.port }}
+        insecure: ${{ steps.config.outputs.insecure }}
+        region: auto
+        bucket: ${{ inputs.bucket }}
+        access-key: ${{ inputs.access-key }}
+        secret-key: ${{ inputs.secret-key }}
+        session-token: ${{ inputs.session-token }}
+        path: ${{ steps.config.outputs.paths }}
+        key: ${{ steps.config.outputs.key }}
+        restore-keys: ${{ steps.config.outputs.restore-key }}
+        restore-only: ${{ steps.config.outputs.target-restore-only }}
+        compression-level: ${{ inputs.zstd-level }}

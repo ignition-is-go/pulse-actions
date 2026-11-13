@@ -19,7 +19,7 @@
       ],
       "Resource": [
         "arn:aws:s3:::example-ci-cache/rust/v1/targets/*",
-        "arn:aws:s3:::example-ci-cache/rust-target-v1-*"
+        "arn:aws:s3:::example-ci-cache/rust/v1/cargo-home/*"
       ]
     }
   ]

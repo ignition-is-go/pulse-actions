@@ -7,7 +7,9 @@ async function main() {
   if (transfer === 'streaming' && process.platform !== 'linux') throw new Error('Streaming requires Linux.');
   const policy = core.getInput('failure-policy') || 'warn';
   if (!['warn', 'fail'].includes(policy)) throw new Error('Invalid cache failure policy.');
-  const names = ['failure-policy', 'transfer', 'endpoint', 'port', 'insecure', 'region', 'bucket', 'access-key', 'secret-key',
+  const kind = core.getInput('kind') || 'target';
+  if (!['registry', 'target'].includes(kind)) throw new Error('Invalid cache kind.');
+  const names = ['kind', 'failure-policy', 'transfer', 'endpoint', 'port', 'insecure', 'region', 'bucket', 'access-key', 'secret-key',
     'session-token', 'path', 'key', 'restore-keys', 'restore-only', 'compression-level'];
   for (const name of names) core.saveState(name, core.getInput(name));
 

@@ -8,4 +8,5 @@ actions/upload-artifact/action.yml
 .github/workflows/validate-workflows.yml
 actions/flux-target-cache/action.yml
 actions/cleanup-rust-targets/action.yml
-actions/s3-target-cache/action.yml
+actions/cargo-s3-cache/action.yml
+actions/cache-rust-s3/action.yml

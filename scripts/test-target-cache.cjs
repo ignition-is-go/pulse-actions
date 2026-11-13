@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const root = path.resolve('/work/repo');
-const { prepare } = require('../actions/setup-rust/prepare-target-cache.cjs');
+const { prepare } = require('../actions/cache-rust-s3/prepare.cjs');
 
 const env = {
   CACHE_AUTH: 'static', CACHE_ENDPOINT: 'http://cache.example.invalid:9000',
@@ -99,19 +99,11 @@ test('includes a separate Cargo build directory', () => {
   assert.equal(result.paths, [path.join(root, 'target'), path.join(root, 'build')].join('\n'));
 });
 
-test('provider object names preserve lookup prefixes on Windows and Unix', () => {
-  for (const [os, platformPath, namespace] of [
-    ['Linux', path.posix, 'rust/v1/targets/'],
-    ['macOS', path.posix, 'rust/v1/targets/'],
-    ['Windows', path.win32, 'rust-target-v1-'],
-  ]) {
+test('S3 namespaces are identical across operating systems', () => {
+  for (const os of ['Linux', 'macOS', 'Windows']) {
     const result = config({RUNNER_OS: os});
-    const { key } = result;
-    assert.ok(key.startsWith(namespace));
-    assert.ok(result['restore-key'].split('\n').every(prefix => prefix.startsWith(namespace)));
-    assert.ok(platformPath.join(key, 'cache.tzst').startsWith(key + platformPath.sep));
-    if (os !== 'Windows') {
-      assert.ok(platformPath.join(key, 'cache.tzst').startsWith('rust/v1/'));
-    }
+    assert.ok(result.key.startsWith('rust/v1/targets/'));
+    assert.ok(result['restore-key'].split('\n').every(prefix => prefix.startsWith('rust/v1/targets/')));
+    assert.ok(result['cargo-home-key'].startsWith('rust/v1/cargo-home/'));
   }
 });
