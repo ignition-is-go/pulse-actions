@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.2.0
+
+- Expose shared Cargo registry/target S3 caching without toolchain installation for platform jobs.
+- Preserve local target outputs after failed S3 saves, with opt-in fatal transport errors.
+- Use the same S3 key namespaces on every operating system and keep registry failure receipts separate.
+- Add strict staged S3 target saves on every supported platform; failed uploads retain targets in both warning and explicit failure modes. Existing setup-rust staged caching now uses this transport.
+
 ## Unreleased
 
 ### Next major

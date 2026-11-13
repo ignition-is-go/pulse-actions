@@ -3,8 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { cleanup } = require('../.github/actions/cleanup-rust-targets/post.cjs');
-const { targetPaths } = require('../actions/setup-rust/prepare-target-cache.cjs');
+const { cleanup } = require('../actions/cleanup-rust-targets/post.cjs');
+const { targetPaths } = require('../actions/cache-rust-s3/prepare.cjs');
 
 test('removes resolved Cargo outputs while preserving published artifacts and uploaded cache', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'target-cleanup-'));
@@ -45,10 +45,30 @@ test('preserves checkout root, external targets and symlinked shared caches', ()
 
 test('cleanup post is success-only and registered before every cache save action', () => {
   const action = fs.readFileSync(path.join(__dirname, '../actions/setup-rust/action.yml'), 'utf8');
-  const cleanupAt = action.indexOf('uses: $/.github/actions/cleanup-rust-targets');
-  for (const cache of ['uses: Swatinem/rust-cache@', 'uses: actions/cache@', 'uses: tespkg/actions-cache@', 'uses: $/.github/actions/s3-target-cache']) {
+  const cleanupAt = action.indexOf('uses: $/actions/cleanup-rust-targets');
+  for (const cache of ['uses: Swatinem/rust-cache@', 'uses: actions/cache@']) {
     assert.ok(action.indexOf(cache) > cleanupAt, cache);
   }
-  const metadata = fs.readFileSync(path.join(__dirname, '../.github/actions/cleanup-rust-targets/action.yml'), 'utf8');
+  const s3 = fs.readFileSync(path.join(__dirname, '../actions/cache-rust-s3/action.yml'), 'utf8');
+  assert.ok(s3.indexOf('uses: $/actions/cleanup-rust-targets') < s3.indexOf('uses: $/actions/cargo-s3-cache'));
+  const metadata = fs.readFileSync(path.join(__dirname, '../actions/cleanup-rust-targets/action.yml'), 'utf8');
   assert.match(metadata, /post-if: success\(\)/);
+});
+
+
+test('a nonfatal failed-save receipt preserves every checkout-local target', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'target-save-failure-'));
+  const target = path.join(root, 'target');
+  fs.mkdirSync(target);
+  fs.writeFileSync(path.join(target, 'warm'), 'compiler output');
+  const prior = process.env.PULSE_CARGO_TARGET_SAVE_FAILED;
+  process.env.PULSE_CARGO_TARGET_SAVE_FAILED = 'true';
+  try {
+    cleanup(root, [target]);
+    assert.equal(fs.readFileSync(path.join(target, 'warm'), 'utf8'), 'compiler output');
+  } finally {
+    if (prior === undefined) delete process.env.PULSE_CARGO_TARGET_SAVE_FAILED;
+    else process.env.PULSE_CARGO_TARGET_SAVE_FAILED = prior;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });

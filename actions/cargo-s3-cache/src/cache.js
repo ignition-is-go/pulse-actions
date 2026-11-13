@@ -5,6 +5,8 @@ const os = require('node:os');
 const path = require('node:path');
 const { pipeline } = require('node:stream/promises');
 const { Client } = require('minio');
+const { createTar, extractTar } = require('@actions/cache/lib/internal/tar');
+const { CompressionMethod } = require('@actions/cache/lib/internal/constants');
 
 const archiveName = 'cache.tzst';
 
@@ -73,6 +75,18 @@ function waitFor(child, label) {
 }
 
 async function restore(storage, bucket, object) {
+  if (state('transfer') === 'staged') {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'pulse-target-cache-'));
+    const archive = path.join(temporary, archiveName);
+    try {
+      core.info(`Downloading ${object.size} bytes from S3 into the Cargo target cache.`);
+      await storage.fGetObject(bucket, object.name, archive);
+      await extractTar(archive, CompressionMethod.ZstdWithoutLong);
+    } finally {
+      fs.rmSync(temporary, { recursive: true, force: true });
+    }
+    return;
+  }
   core.info(`Streaming ${object.size} bytes from S3 into the Cargo target cache.`);
   const source = await storage.getObject(bucket, object.name);
   const tar = spawn('tar', ['-xf', '-', '-P', '-C', process.env.GITHUB_WORKSPACE,
@@ -87,6 +101,18 @@ async function save(storage, bucket, key, paths, compressionLevel) {
     return;
   }
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'pulse-target-cache-'));
+  if (state('transfer') === 'staged') {
+    try {
+      if (!/^([1-9]|1[0-9])$/.test(compressionLevel)) throw new Error('Invalid compression level.');
+      process.env.ZSTD_CLEVEL = compressionLevel;
+      await createTar(temporary, existing.map(candidate => candidate.split(path.sep).join('/')), CompressionMethod.ZstdWithoutLong);
+      await storage.fPutObject(bucket, objectName(key), path.join(temporary, archiveName));
+      core.info('Target cache saved to S3.');
+    } finally {
+      fs.rmSync(temporary, { recursive: true, force: true });
+    }
+    return;
+  }
   const manifest = path.join(temporary, 'manifest.txt');
   fs.writeFileSync(manifest, `${existing.join('\n')}\n`);
   const tar = spawn('tar', ['--posix', '-cf', '-', '-P', '-C', process.env.GITHUB_WORKSPACE,
@@ -94,13 +120,17 @@ async function save(storage, bucket, key, paths, compressionLevel) {
     stdio: ['ignore', 'pipe', 'inherit'],
     env: { ...process.env, ZSTD_CLEVEL: compressionLevel },
   });
+  const completed = waitFor(tar, 'tar save');
   try {
     core.info(`Streaming the Cargo target cache to S3 with zstd level ${compressionLevel}.`);
     await Promise.all([
       storage.putObject(bucket, objectName(key), tar.stdout),
-      waitFor(tar, 'tar save'),
+      completed,
     ]);
   } finally {
+    tar.stdout.destroy();
+    if (tar.exitCode === null) tar.kill();
+    await completed.catch(() => {});
     fs.rmSync(temporary, { recursive: true, force: true });
   }
   core.info('Target cache saved to S3.');

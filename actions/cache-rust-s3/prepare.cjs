@@ -2,6 +2,7 @@ const { createHash, randomUUID } = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const { appendFileSync } = require('node:fs');
 const path = require('node:path');
+const os = require('node:os');
 
 function hash(value) {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 32);
@@ -67,8 +68,7 @@ function prepare(env, run = (program, args, cwd) =>
     || /^CARGO_(PROFILE_|TARGET_)/.test(name)).sort(([a], [b]) => a.localeCompare(b));
   const identity = hash([env.RUNNER_OS, env.RUNNER_ARCH, compiler, uniquePaths.map(p => path.relative(root, p)),
     env.CACHE_SHARED_KEY, env.CACHE_ENV_HASH, env.CACHE_LOCK_HASH, env.CACHE_TRANSFER, buildEnv]);
-  // The provider uses path.join for S3 objects, so nested keys break on Windows.
-  const namespace = env.RUNNER_OS === 'Windows' ? 'rust-target-v1-' : 'rust/v1/targets/';
+  const namespace = 'rust/v1/targets/';
   const prefix = `${namespace}${hash(env.GITHUB_REPOSITORY)}-${identity}`;
   const branchPrefix = `${prefix}-${hash(env.GITHUB_REF)}-`;
   const defaultPrefix = `${prefix}-${hash(`refs/heads/${env.CACHE_DEFAULT_BRANCH}`)}-`;
@@ -79,12 +79,12 @@ function prepare(env, run = (program, args, cwd) =>
   const restoreOnly = env.GITHUB_EVENT_NAME === 'pull_request_target' ||
     (pullRequest && env.CACHE_PR_HEAD_REPOSITORY !== env.GITHUB_REPOSITORY);
   const targetRestoreOnly = env.CACHE_SAVE_IF === 'false' || restoreOnly;
-  const cargoHome = path.resolve(env.CACHE_CARGO_HOME);
+  const cargoHome = path.resolve(env.CACHE_CARGO_HOME || env.CARGO_HOME || path.join(os.homedir(), '.cargo'));
   const cargoHomePaths = [path.join(cargoHome, 'registry', 'cache'), path.join(cargoHome, 'git', 'db')];
   if (env.RUNNER_OS === 'Windows' && env.CACHE_SPARSE_INDEX_ENABLED === 'true') {
     cargoHomePaths.push(path.resolve(env.CACHE_SPARSE_INDEX_PATH));
   }
-  const cargoHomeNamespace = env.RUNNER_OS === 'Windows' ? 'rust-cargo-home-v1-' : 'rust/v1/cargo-home/';
+  const cargoHomeNamespace = 'rust/v1/cargo-home/';
   const cargoHomeIdentity = hash([env.RUNNER_OS, env.RUNNER_ARCH, compiler, env.CACHE_SHARED_KEY,
     env.CACHE_LOCK_HASH]);
   return {

@@ -1,7 +1,16 @@
-name: Streaming S3 target cache
-description: Restore and save a tar-zstd cache without staging the archive on disk.
+name: Cargo S3 cache
+description: Strict S3 compiler cache with staged or Linux streaming transfer.
 
 inputs:
+  kind:
+    description: registry or target; keeps failed-save reports attached to their cache kind.
+    default: target
+  failure-policy:
+    description: warn or fail on transport errors; failed saves always retain local targets.
+    default: warn
+  transfer:
+    description: staged or streaming; streaming requires Linux.
+    default: streaming
   endpoint:
     description: S3-compatible endpoint hostname.
     required: true

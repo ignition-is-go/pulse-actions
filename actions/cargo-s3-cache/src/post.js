@@ -14,4 +14,9 @@ async function post() {
   await save(client(), state('bucket'), key, state('path').split(/\r?\n/).filter(Boolean), state('compression-level'));
 }
 
-post().catch(error => core.setFailed(error.message));
+post().catch(error => {
+  const kind = state('kind') || 'target';
+  core.exportVariable(`PULSE_CARGO_${kind.toUpperCase()}_SAVE_FAILED`, 'true');
+  if (state('failure-policy') === 'fail') core.setFailed(error.message);
+  else core.warning(error.message);
+});
