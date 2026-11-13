@@ -66,6 +66,24 @@ runs:
     - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
       with:
         node-version: '22'
+    - name: Ensure Windows archive compression
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        $ErrorActionPreference = 'Stop'
+        if (Get-Command zstd -ErrorAction SilentlyContinue) { exit 0 }
+        $directory = Join-Path $env:RUNNER_TEMP "pulse-zstd-$([guid]::NewGuid())"
+        New-Item -ItemType Directory -Path $directory | Out-Null
+        $archive = Join-Path $directory 'zstd.zip'
+        Invoke-WebRequest -Uri 'https://github.com/meta/zstd/releases/download/v1.5.7/zstd-v1.5.7-win64.zip' -OutFile $archive
+        if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne 'ACB4E8111511749DC7A3EBEDCA9B04190E37A17AFEB73F55D4425DBF0B90FAD9') {
+          throw 'Zstandard archive checksum mismatch'
+        }
+        Expand-Archive -LiteralPath $archive -DestinationPath $directory
+        $tools = Join-Path $directory 'zstd-v1.5.7-win64'
+        & (Join-Path $tools 'zstd.exe') --version
+        if ($LASTEXITCODE -ne 0) { throw 'Zstandard verification failed' }
+        $tools | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
     - name: Prepare Cargo cache identities
       id: config
       shell: ${{ runner.os == 'Windows' && 'powershell' || 'bash' }}
