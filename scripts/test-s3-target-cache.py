@@ -164,6 +164,26 @@ def exercise(base, provider):
         assert len(client.list_objects_v2(Bucket=bucket)["Contents"]) == 1
         print(f"PASS ({provider_id}): restored {len(artifacts)} cached files byte-for-byte from S3.")
         print(f"PASS ({provider_id}): fallback behavior and read-only mode work.")
+        object_name = objects[0]["Key"]
+        client.put_object(Bucket=bucket, Key=object_name, Body=b"not a valid compiler archive")
+        env["INPUT_KEY"] = config["cargo-home-key"] if cargo_home else config["key"]
+        env["INPUT_RESTORE-ONLY"] = "false"
+        env["INPUT_FAILURE-POLICY"] = "warn"
+        run(restore, workspace, env)
+        assert command_file(base / "output")["cache-hit"] == "false", "failed extraction reported a cache hit"
+        env.update({f"STATE_{k}": v for k, v in command_file(base / "state").items()})
+        assert env["STATE_matched-key"] == "", "failed extraction retained an accepted cache key"
+        log = run(save, workspace, env)
+        assert "cache saved to s3" in log.lower(), "rebuilt outputs did not replace the corrupt archive"
+        run(restore, workspace, env)
+        assert command_file(base / "output")["cache-hit"] == "true"
+        client.put_object(Bucket=bucket, Key=object_name, Body=b"not a valid compiler archive")
+        env["INPUT_FAILURE-POLICY"] = "fail"
+        result = subprocess.run(restore, cwd=workspace, env=env, text=True, capture_output=True, timeout=60)
+        assert result.returncode != 0, "strict failed extraction was reported as success"
+        assert command_file(base / "output")["cache-hit"] == "false"
+        env.update({f"STATE_{k}": v for k, v in command_file(base / "state").items()})
+        print(f"PASS ({provider_id}): corrupt archives never report a hit and can be replaced after a warning.")
         denied = dict(env)
         denied["STATE_key"] = config["key"] + "-denied"
         denied["STATE_matched-key"] = ""

@@ -16,17 +16,21 @@ async function main() {
   const bucket = core.getInput('bucket', { required: true });
   const key = core.getInput('key', { required: true });
   const restoreKeys = core.getMultilineInput('restore-keys');
+  core.saveState('matched-key', '');
+  core.setOutput('cache-hit', 'false');
+  core.setOutput('cache-size', '0');
+  core.setOutput('cache-matched-key', '');
   try {
     const match = await find(client(), bucket, key, restoreKeys);
-    core.saveState('matched-key', match?.key || '');
-    core.setOutput('cache-hit', String(match?.key === key));
-    core.setOutput('cache-size', String(match?.size || 0));
-    core.setOutput('cache-matched-key', match?.key || '');
     if (!match) {
       core.info('No compatible S3 Cargo cache was found.');
       return;
     }
     await restore(client(), bucket, match);
+    core.saveState('matched-key', match.key);
+    core.setOutput('cache-hit', String(match.key === key));
+    core.setOutput('cache-size', String(match.size));
+    core.setOutput('cache-matched-key', match.key);
   } catch (error) {
     if (policy === 'fail') throw error;
     core.warning(error.message);
