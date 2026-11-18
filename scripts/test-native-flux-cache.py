@@ -71,11 +71,13 @@ def main():
             run(['cargo', 'test', '--offline'], root, env)
             if '--cargo-plugin' in sys.argv:
                 run(['cargo', 'test', '--offline', '--manifest-path', 'client/Cargo.toml'], root, env)
+            if '--obsolete-example' in sys.argv:
                 (root / 'examples').mkdir()
                 retired = root / 'examples/retired.rs'
                 retired.write_text('fn main() {}\n')
                 run(['cargo', 'build', '--offline', '--example', 'retired'], root, env)
-                assert list((root / 'out/debug/.fingerprint').glob('*/example-retired.json'))
+                retired_fingerprints = list((root / 'out').rglob('example-retired.json'))
+                assert retired_fingerprints
                 retired.unlink()
             (root / 'dist').mkdir()
             (root / 'dist/published').write_text('published artifact')
@@ -102,8 +104,8 @@ def main():
             env['GITHUB_REF'] = 'refs/heads/feature'
             run(adapter + ['restore'], root, env)
             assert (root / 'out').is_dir(), 'native S3 snapshot was not restored'
-            if '--cargo-plugin' in sys.argv:
-                assert not list((root / 'out/debug/.fingerprint').glob('*/example-retired.json')), 'obsolete example was included in snapshot'
+            if '--obsolete-example' in sys.argv:
+                assert all(not p.exists() for p in retired_fingerprints), 'obsolete example was included in snapshot'
             tested = run(['cargo', 'test', '--offline'], root, env)
             assert 'Compiling pulse-actions-contract' not in tested.stderr, tested.stderr
             if '--cargo-plugin' in sys.argv:

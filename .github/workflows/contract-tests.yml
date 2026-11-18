@@ -122,6 +122,16 @@ jobs:
       - name: Exercise Cargo selection with independent manifests
         if: runner.os == 'Linux'
         run: uv run scripts/test-native-flux-cache.py --cargo-plugin
+      - name: Install Tactus native compiler for obsolete-output coverage
+        if: runner.os == 'Linux'
+        uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: '1.98.0'
+      - name: Verify obsolete-output pruning with the Tactus compiler
+        if: runner.os == 'Linux'
+        env:
+          RUSTUP_TOOLCHAIN: '1.98.0'
+        run: uv run scripts/test-native-flux-cache.py --cargo-plugin --obsolete-example
       - name: Build, save, delete, restore and test offline
         run: uv run scripts/test-s3-target-cache.py
       - name: Start an isolated denied-save S3 fixture
