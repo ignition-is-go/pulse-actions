@@ -44,7 +44,7 @@ def main():
             event = base / 'event.json'
             event.write_text(json.dumps({'repository': {'default_branch': 'main'}}))
             output = base / 'output'
-            env = dict(os.environ, GITHUB_WORKSPACE=str(root), GITHUB_REPOSITORY='example/project', GITHUB_REF='refs/heads/main', GITHUB_EVENT_NAME='push', GITHUB_EVENT_PATH=str(event), GITHUB_OUTPUT=str(output), RUNNER_TEMP=str(base), CARGO_FLUX_S3_ENDPOINT=endpoint, CARGO_FLUX_S3_BUCKET='flux-ci-fixture', CARGO_FLUX_S3_ACCESS_KEY_ID='test', CARGO_FLUX_S3_SECRET_ACCESS_KEY='test', CARGO_FLUX_S3_REGION='us-east-1')
+            env = dict(os.environ, CARGO_TERM_COLOR='never', GITHUB_WORKSPACE=str(root), GITHUB_REPOSITORY='example/project', GITHUB_REF='refs/heads/main', GITHUB_EVENT_NAME='push', GITHUB_EVENT_PATH=str(event), GITHUB_OUTPUT=str(output), RUNNER_TEMP=str(base), CARGO_FLUX_S3_ENDPOINT=endpoint, CARGO_FLUX_S3_BUCKET='flux-ci-fixture', CARGO_FLUX_S3_ACCESS_KEY_ID='test', CARGO_FLUX_S3_SECRET_ACCESS_KEY='test', CARGO_FLUX_S3_REGION='us-east-1')
             for name in ['CARGO_TARGET_DIR', 'RUSTC_WRAPPER', 'RUSTC_WORKSPACE_WRAPPER']:
                 env.pop(name, None)
             for args in [['git', 'init', '-q'], ['git', 'add', '.']]:
