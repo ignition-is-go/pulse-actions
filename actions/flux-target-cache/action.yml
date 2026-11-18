@@ -7,6 +7,12 @@ inputs:
   scope:
     description: Isolate parallel jobs or incompatible build profiles within a repository.
     default: ''
+  plugin:
+    description: Optional snapshot selector plugin, such as cargo (requires Flux v0.12.0 or newer).
+    default: ''
+  plugin-options:
+    description: Newline-separated plugin options, each in name=value form. Captured during restore for save.
+    default: ''
   state:
     description: State returned by restore, required for save.
     default: ''
@@ -24,6 +30,8 @@ runs:
         OPERATION: ${{ inputs.operation }}
         FLUX_CACHE_SCOPE: ${{ inputs.scope }}
         FLUX_CACHE_STATE: ${{ inputs.state }}
+        FLUX_CACHE_PLUGIN: ${{ inputs.plugin }}
+        FLUX_CACHE_PLUGIN_OPTIONS: ${{ inputs.plugin-options }}
       run: |
         if [[ "$RUNNER_OS" != Linux ]]; then
           echo 'Native Flux snapshots in this workflow require Linux.' >&2

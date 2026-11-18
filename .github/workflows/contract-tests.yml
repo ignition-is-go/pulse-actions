@@ -116,6 +116,12 @@ jobs:
       - name: Exercise native Flux upload, cleanup and restore
         if: runner.os == 'Linux'
         run: uv run scripts/test-native-flux-cache.py
+      - name: Set up Flux with Cargo snapshot selection
+        if: runner.os == 'Linux'
+        uses: ignition-is-go/cargo-flux@ae2ffa5f4420add3ab3c98665a4b5c0374bf2a5b # v0.12.0
+      - name: Exercise Cargo selection with independent manifests
+        if: runner.os == 'Linux'
+        run: uv run scripts/test-native-flux-cache.py --cargo-plugin
       - name: Build, save, delete, restore and test offline
         run: uv run scripts/test-s3-target-cache.py
       - name: Start an isolated denied-save S3 fixture
