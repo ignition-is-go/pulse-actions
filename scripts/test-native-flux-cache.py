@@ -44,24 +44,51 @@ def main():
             event = base / 'event.json'
             event.write_text(json.dumps({'repository': {'default_branch': 'main'}}))
             output = base / 'output'
-            env = dict(os.environ, GITHUB_WORKSPACE=str(root), GITHUB_REPOSITORY='example/project', GITHUB_REF='refs/heads/main', GITHUB_EVENT_NAME='push', GITHUB_EVENT_PATH=str(event), GITHUB_OUTPUT=str(output), RUNNER_TEMP=str(base), CARGO_FLUX_S3_ENDPOINT=endpoint, CARGO_FLUX_S3_BUCKET='flux-ci-fixture', CARGO_FLUX_S3_ACCESS_KEY_ID='test', CARGO_FLUX_S3_SECRET_ACCESS_KEY='test', CARGO_FLUX_S3_REGION='us-east-1')
+            env = dict(os.environ, CARGO_TERM_COLOR='never', GITHUB_WORKSPACE=str(root), GITHUB_REPOSITORY='example/project', GITHUB_REF='refs/heads/main', GITHUB_EVENT_NAME='push', GITHUB_EVENT_PATH=str(event), GITHUB_OUTPUT=str(output), RUNNER_TEMP=str(base), CARGO_FLUX_S3_ENDPOINT=endpoint, CARGO_FLUX_S3_BUCKET='flux-ci-fixture', CARGO_FLUX_S3_ACCESS_KEY_ID='test', CARGO_FLUX_S3_SECRET_ACCESS_KEY='test', CARGO_FLUX_S3_REGION='us-east-1')
             for name in ['CARGO_TARGET_DIR', 'RUSTC_WRAPPER', 'RUSTC_WORKSPACE_WRAPPER']:
                 env.pop(name, None)
             for args in [['git', 'init', '-q'], ['git', 'add', '.']]:
                 run(args, root, env)
             adapter = [sys.executable, str(ROOT / 'actions/setup-rust/flux-target-cache.py')]
+            if '--cargo-plugin' in sys.argv:
+                env['FLUX_CACHE_PLUGIN'] = 'cargo'
+                env['FLUX_CACHE_PLUGIN_OPTIONS'] = 'manifest-path=Cargo.toml\nmanifest-path=client/Cargo.toml'
+                client = root / 'client'
+                (client / 'src').mkdir(parents=True)
+                (client / 'Cargo.toml').write_text('[workspace]\n[package]\nname="client-fixture"\nversion="0.0.0"\nedition="2024"\n')
+                (client / 'src/lib.rs').write_text('#[test] fn client() { assert_eq!(2 + 2, 4); }\n')
+                run(['git', 'add', '.'], root, env)
             env['FLUX_CACHE_SCOPE'] = 'engine'
             run(adapter + ['restore'], root, env)
             engine_key = json.loads(Path(output.read_text().strip().split('=', 1)[1]).read_text())['key']
             env['FLUX_CACHE_STATE'] = output.read_text().strip().split('=', 1)[1]
+            if '--cargo-plugin' not in sys.argv:
+                state_file = Path(env['FLUX_CACHE_STATE'])
+                state = json.loads(state_file.read_text())
+                state.pop('plugin')
+                state.pop('plugin_options')
+                state_file.write_text(json.dumps(state))
             run(['cargo', 'test', '--offline'], root, env)
+            if '--cargo-plugin' in sys.argv:
+                run(['cargo', 'test', '--offline', '--manifest-path', 'client/Cargo.toml'], root, env)
+            if '--obsolete-example' in sys.argv:
+                (root / 'examples').mkdir()
+                retired = root / 'examples/retired.rs'
+                retired.write_text('fn main() {}\n')
+                run(['cargo', 'build', '--offline', '--example', 'retired'], root, env)
+                retired_fingerprints = list((root / 'out').rglob('example-retired.json'))
+                assert retired_fingerprints
+                retired.unlink()
             (root / 'dist').mkdir()
             (root / 'dist/published').write_text('published artifact')
             failed_env = dict(env, CARGO_FLUX_S3_ENDPOINT='http://127.0.0.1:9')
             assert run(adapter + ['save'], root, failed_env, ok=False).returncode != 0
             assert (root / 'out').is_dir(), 'failed upload removed local outputs'
             assert Path(env['FLUX_CACHE_STATE']).exists()
-            run(adapter + ['save'], root, env)
+            saved = run(adapter + ['save'], root, dict(env, FLUX_CACHE_PLUGIN='', FLUX_CACHE_PLUGIN_OPTIONS=''))
+            if '--cargo-plugin' in sys.argv:
+                assert 'storage compiler snapshot:' in saved.stderr, saved.stderr
+                print(next(line for line in saved.stderr.splitlines() if 'storage compiler snapshot:' in line))
             assert not (root / 'out').exists(), 'successful upload left local outputs'
             assert (root / 'dist/published').read_text() == 'published artifact'
             objects = s3.list_objects_v2(Bucket='flux-ci-fixture').get('Contents', [])
@@ -77,7 +104,14 @@ def main():
             env['GITHUB_REF'] = 'refs/heads/feature'
             run(adapter + ['restore'], root, env)
             assert (root / 'out').is_dir(), 'native S3 snapshot was not restored'
-            run(['cargo', 'test', '--offline'], root, env)
+            if '--obsolete-example' in sys.argv:
+                assert all(not p.exists() for p in retired_fingerprints), 'obsolete example was included in snapshot'
+            tested = run(['cargo', 'test', '--offline'], root, env)
+            assert 'Compiling pulse-actions-contract' not in tested.stderr, tested.stderr
+            if '--cargo-plugin' in sys.argv:
+                tested = run(['cargo', 'test', '--offline', '--manifest-path', 'client/Cargo.toml'], root, env)
+                assert 'Compiling client-fixture' not in tested.stderr, tested.stderr
+                print('PASS: Cargo plugin selected both manifests and preserved warm offline reuse')
             print('PASS: native S3 miss/build, failed-save retention, successful-save cleanup, artifact preservation, job isolation, scoped main fallback and offline test')
     finally:
         server.stop()

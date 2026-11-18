@@ -15,6 +15,10 @@ def command(*args, capture=False):
 
 
 def restore():
+    plugin = os.environ.get('FLUX_CACHE_PLUGIN', '').strip()
+    plugin_options = [line.strip() for line in os.environ.get('FLUX_CACHE_PLUGIN_OPTIONS', '').splitlines() if line.strip()]
+    if plugin_options and not plugin:
+        raise ValueError('Snapshot plugin options require a plugin')
     root = Path(os.environ['GITHUB_WORKSPACE']).resolve()
     config = tomllib.loads((root / 'flux.toml').read_text())
     if not config.get('cache', {}).get('s3'):
@@ -42,7 +46,8 @@ def restore():
         command(flux, 'storage', 'sources', '--restore', '--path', p)
     writable = os.environ.get('GITHUB_EVENT_NAME') != 'pull_request_target' and (
         'pull_request' not in event or event['pull_request']['head']['repo']['full_name'] == repo)
-    state = {'paths': paths, 'key': key, 'writable': writable}
+    state = {'paths': paths, 'key': key, 'writable': writable,
+             'plugin': plugin, 'plugin_options': plugin_options}
     with tempfile.NamedTemporaryFile(mode='w', dir=os.environ['RUNNER_TEMP'], suffix='.flux-cache.json', delete=False) as f:
         json.dump(state, f)
         state_file = f.name
@@ -61,7 +66,9 @@ def save():
     if paths:
         for p in paths:
             command(flux, 'storage', 'sources', '--path', p)
-        command(flux, 'storage', 'save', '--key', state['key'],
+        plugin_args = ['--plugin', state['plugin']] if state.get('plugin') else []
+        plugin_args.extend(arg for option in state.get('plugin_options', []) for arg in ['--plugin-option', option])
+        command(flux, 'storage', 'save', *plugin_args, '--key', state['key'],
                 *[arg for p in paths for arg in ['--path', p]])
         root = Path(os.environ['GITHUB_WORKSPACE']).resolve()
         targets = [Path(p) for p in paths]

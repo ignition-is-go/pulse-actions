@@ -153,6 +153,15 @@ and provide `[cache.s3]` in `flux.toml` first. Pass `operation: restore`, retain
 returned `state`, then call `operation: save` with that state after tests and
 artifact uploads succeed. Failed uploads retain local outputs.
 
+With Cargo Flux v0.12.0 or newer, set `plugin: cargo` on restore to select reusable
+Cargo outputs during save. Supply `plugin-options` as newline-separated options,
+for example `manifest-path=Cargo.toml`. Repeat `manifest-path=...` for each
+independent workspace built into the shared target. Restore captures these options
+in its returned state, so save uses the same contract. Omitting `plugin` preserves
+the full-directory snapshot behavior and supports older Flux installations.
+Cargo selection preserves outputs whose liveness it cannot establish, including
+unrecognized compiler output layouts.
+
 Use a distinct `scope` for parallel jobs or incompatible build profiles. Restore
 tries that scope on the current ref, then the same scope on the default branch;
 parallel jobs cannot overwrite one another's snapshots. Cargo target directories
