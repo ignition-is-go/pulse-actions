@@ -71,6 +71,12 @@ def main():
             run(['cargo', 'test', '--offline'], root, env)
             if '--cargo-plugin' in sys.argv:
                 run(['cargo', 'test', '--offline', '--manifest-path', 'client/Cargo.toml'], root, env)
+                (root / 'examples').mkdir()
+                retired = root / 'examples/retired.rs'
+                retired.write_text('fn main() {}\n')
+                run(['cargo', 'build', '--offline', '--example', 'retired'], root, env)
+                assert list((root / 'out/debug/.fingerprint').glob('*/example-retired.json'))
+                retired.unlink()
             (root / 'dist').mkdir()
             (root / 'dist/published').write_text('published artifact')
             failed_env = dict(env, CARGO_FLUX_S3_ENDPOINT='http://127.0.0.1:9')
@@ -80,6 +86,7 @@ def main():
             saved = run(adapter + ['save'], root, dict(env, FLUX_CACHE_PLUGIN='', FLUX_CACHE_PLUGIN_OPTIONS=''))
             if '--cargo-plugin' in sys.argv:
                 assert 'storage compiler snapshot:' in saved.stderr, saved.stderr
+                print(next(line for line in saved.stderr.splitlines() if 'storage compiler snapshot:' in line))
             assert not (root / 'out').exists(), 'successful upload left local outputs'
             assert (root / 'dist/published').read_text() == 'published artifact'
             objects = s3.list_objects_v2(Bucket='flux-ci-fixture').get('Contents', [])
@@ -95,6 +102,8 @@ def main():
             env['GITHUB_REF'] = 'refs/heads/feature'
             run(adapter + ['restore'], root, env)
             assert (root / 'out').is_dir(), 'native S3 snapshot was not restored'
+            if '--cargo-plugin' in sys.argv:
+                assert not list((root / 'out/debug/.fingerprint').glob('*/example-retired.json')), 'obsolete example was included in snapshot'
             tested = run(['cargo', 'test', '--offline'], root, env)
             assert 'Compiling pulse-actions-contract' not in tested.stderr, tested.stderr
             if '--cargo-plugin' in sys.argv:
