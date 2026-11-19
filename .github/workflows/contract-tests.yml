@@ -125,7 +125,7 @@ jobs:
         uses: ignition-is-go/cargo-flux@ae2ffa5f4420add3ab3c98665a4b5c0374bf2a5b # v0.12.0
       - name: Exercise Cargo selection with independent manifests
         if: runner.os == 'Linux'
-        run: uv run scripts/test-native-flux-cache.py --cargo-plugin
+        run: uv run scripts/test-native-flux-cache.py --cargo-plugin --obsolete-example
       - name: Install Tactus native compiler for obsolete-output coverage
         if: runner.os == 'Linux'
         uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc # master
