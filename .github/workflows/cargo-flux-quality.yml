@@ -82,7 +82,7 @@ jobs:
     runs-on: ${{ fromJSON(inputs.linux-runner-json) }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -106,7 +106,7 @@ jobs:
           compiler-cache-secret-key: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SECRET_KEY || '' }}
           compiler-cache-session-token: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SESSION_TOKEN || '' }}
       - name: Set up Cargo Flux and its native S3 client
-        uses: ignition-is-go/cargo-flux@ae2ffa5f4420add3ab3c98665a4b5c0374bf2a5b # v0.12.0
+        uses: ignition-is-go/cargo-flux@9890cdccc819e410a3bcedabc8aec685e71ccb32 # v0.11.8
         with:
           version: ${{ inputs.cargo-flux-version }}
           cache: ${{ (inputs.cache-target-backend == 's3' || inputs.cache-target-backend == 'flux-s3') && 's3' || '' }}
