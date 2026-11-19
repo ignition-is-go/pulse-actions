@@ -8,7 +8,7 @@ on:
         default: stable
       cargo-flux-version:
         type: string
-        required: true
+        default: "0.12.0"
       tasks:
         description: Space-separated Cargo Flux task names.
         type: string
@@ -26,6 +26,18 @@ on:
         description: Cargo cache backend (github, s3, or flux-s3). flux-s3 uses native Flux snapshots and requires [cache.s3].
         type: string
         default: github
+      cache-plugin:
+        description: Optional native snapshot selector. Set cargo with Flux v0.12.0 or newer.
+        type: string
+        default: ""
+      cache-plugin-options:
+        description: Newline-separated selector options, such as manifest-path=client/Cargo.toml.
+        type: string
+        default: ""
+      cache-scope:
+        description: Isolate native snapshots for incompatible job profiles.
+        type: string
+        default: ""
       cache-s3-transfer:
         description: Legacy setup-rust transfer setting; native Flux snapshots use Flux streaming.
         type: string
@@ -94,7 +106,7 @@ jobs:
           compiler-cache-secret-key: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SECRET_KEY || '' }}
           compiler-cache-session-token: ${{ inputs.compiler-cache-auth == 'static' && secrets.CI_CACHE_SESSION_TOKEN || '' }}
       - name: Set up Cargo Flux and its native S3 client
-        uses: ignition-is-go/cargo-flux@eecab76c2c1296cb7e9e5b8d8d72149e49282fb4 # v0.11.7
+        uses: ignition-is-go/cargo-flux@ae2ffa5f4420add3ab3c98665a4b5c0374bf2a5b # v0.12.0
         with:
           version: ${{ inputs.cargo-flux-version }}
           cache: ${{ (inputs.cache-target-backend == 's3' || inputs.cache-target-backend == 'flux-s3') && 's3' || '' }}
@@ -113,6 +125,9 @@ jobs:
         uses: $/actions/flux-target-cache
         with:
           operation: restore
+          scope: ${{ inputs.cache-scope }}
+          plugin: ${{ inputs.cache-plugin }}
+          plugin-options: ${{ inputs.cache-plugin-options }}
       - name: Run Cargo Flux tasks
         env:
           FLUX_TASKS: ${{ inputs.tasks }}

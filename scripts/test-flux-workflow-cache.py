@@ -12,7 +12,7 @@ class FluxWorkflowCacheTest(unittest.TestCase):
         self.setup = next(s for s in self.steps if s.get('name') == 'Set up Cargo Flux and its native S3 client')
 
     def test_verified_action_preserves_callers_version(self):
-        self.assertEqual(self.setup['uses'], 'ignition-is-go/cargo-flux@eecab76c2c1296cb7e9e5b8d8d72149e49282fb4')
+        self.assertEqual(self.setup['uses'], 'ignition-is-go/cargo-flux@ae2ffa5f4420add3ab3c98665a4b5c0374bf2a5b')
         self.assertEqual(self.setup['with']['version'], '${{ inputs.cargo-flux-version }}')
         self.assertFalse(any('cargo install cargo-flux' in s.get('run', '') for s in self.steps))
 
@@ -36,6 +36,18 @@ class FluxWorkflowCacheTest(unittest.TestCase):
         self.assertLess(self.steps.index(tasks), self.steps.index(save))
         self.assertIn('success()', save['if'])
         self.assertEqual(save['with']['state'], '${{ steps.flux-target-cache.outputs.state }}')
+
+    def test_native_policy_is_owned_by_the_shared_workflow(self):
+        workflow = yaml.load((ROOT / '.github/workflows/cargo-flux-quality.yml').read_text(), Loader=yaml.BaseLoader)
+        inputs = workflow['on']['workflow_call']['inputs']
+        self.assertEqual(inputs['cargo-flux-version']['default'], '0.12.0')
+        self.assertEqual(inputs['cache-plugin']['default'], '')
+        self.assertEqual(inputs['cache-plugin-options']['default'], '')
+        self.assertEqual(inputs['cache-scope']['default'], '')
+        restore = next(s for s in self.steps if s.get('id') == 'flux-target-cache')
+        self.assertEqual(restore['with']['plugin'], '${{ inputs.cache-plugin }}')
+        self.assertEqual(restore['with']['plugin-options'], '${{ inputs.cache-plugin-options }}')
+        self.assertEqual(restore['with']['scope'], '${{ inputs.cache-scope }}')
 
     def test_s3_preparation_installs_its_node_runtime(self):
         action = yaml.safe_load((ROOT / 'actions/cache-rust-s3/action.yml').read_text())
