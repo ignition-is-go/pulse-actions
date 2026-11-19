@@ -145,6 +145,14 @@ Existing `github` and `s3` backend selections keep their snapshot-transfer
 behavior. Select `flux-s3` explicitly when adopting native Flux snapshots and
 add the S3 configuration above; no existing caller is forced to migrate.
 
+For Cargo-aware native snapshots in the shared quality workflow, set
+`cache-target-backend: flux-s3` and `cache-plugin: cargo`. The workflow defaults
+to Flux v0.12.0 and owns restore, task execution, save and successful-upload
+cleanup. Existing explicit `cargo-flux-version` pins remain supported. The
+selector defaults to the root Cargo manifest. Use `cache-plugin-options` only
+for additional manifests and `cache-scope` for incompatible job profiles.
+Existing callers retain an empty selector until they opt in.
+
 ### Native compiler snapshots in custom jobs
 
 `actions/flux-target-cache` restores native Flux snapshots and, after a successful
